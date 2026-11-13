@@ -1105,6 +1105,7 @@ function frame(now) {
 }
 function frameBody(now) {
   const real = Math.min(.05, (now - last) / 1000); last = now;
+  if (G.title) { BG.update(G.camX, real * .3, G.time += real * .3); WEATHER.update(G.camX, real * .3, real); renderer.render(scene, camera); return; }
   let dt = real * G.speed;
   if (G.hitstop > 0) { G.hitstop -= real; dt *= .12; }
   try { CINE.tick(real); } catch (err) { console.error(err); CINE.abort(); }
@@ -1196,6 +1197,7 @@ async function boot() {
   UI.init();
   QUESTS.init(); STORY.init();
   document.getElementById('loading').remove();
+  TITLE.show();
   last = performance.now();
   requestAnimationFrame(frame);
   window.addEventListener('pagehide', () => save(true));

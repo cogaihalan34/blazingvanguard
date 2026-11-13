@@ -11,8 +11,8 @@ const AUDIO = (() => {
   function noise(loop) { if (!noiseBuf) { noiseBuf = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate); const d = noiseBuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; } const s = ctx.createBufferSource(); s.buffer = noiseBuf; s.loop = !!loop; return s; }
 
   /* ---------- music: two looping <audio> streams with crossfade ---------- */
-  const TRACKS = { normal: 'audio/main_heroine.mp3', void: 'audio/dungeon.mp3' };
-  const MUSIC_VOL = { normal: .62, void: .7 };
+  const TRACKS = { normal: 'audio/main_heroine.mp3', void: 'audio/dungeon.mp3', title: 'audio/title.mp3' };
+  const MUSIC_VOL = { normal: .62, void: .7, title: .75 };
   const tracks = {}; let world = 'normal', duck = 1;
   function makeTrack(key) {
     const el = new Audio(); el.src = TRACKS[key]; el.loop = true; el.preload = 'auto'; el.crossOrigin = 'anonymous';
@@ -101,12 +101,12 @@ const AUDIO = (() => {
     ambBus = ctx.createGain(); ambBus.gain.value = 1; ambBus.connect(master);
     verb = ctx.createConvolver(); verb.buffer = impulse(2.2, 2.4);
     const wet = ctx.createGain(); wet.gain.value = .25; verb.connect(wet); wet.connect(master);
-    tracks.normal = makeTrack('normal'); tracks.void = makeTrack('void');
+    tracks.normal = makeTrack('normal'); tracks.void = makeTrack('void'); tracks.title = makeTrack('title');
     buildAmbience();
     return true;
   }
   function pump() { if (!ctx) return; synthPump(); ambiencePump(); }
-  function setWorld(w) { world = w; if (started) playTrack(w, w === 'void' ? 1.6 : 2.4); setEnv({ void: w === 'void' ? 1 : 0 }); }
+  function setWorld(w) { world = w; if (started) playTrack(w, w === 'void' ? 1.6 : w === 'title' ? .6 : 2.4); setEnv({ void: w === 'void' ? 1 : 0 }); }
 
   /* ---------- sound effects ---------- */
   const last = {};

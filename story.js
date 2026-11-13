@@ -246,3 +246,29 @@ UI.init = function () {
   $('qmClose').addEventListener('click', () => QUESTS.close());
   $('questModal').addEventListener('click', (e) => { if (e.target.id === 'questModal') QUESTS.close(); });
 };
+
+/* =========================================================================
+   TITLE SCREEN — key art, logo shimmer, "TAP TO START" (unlocks audio + title BGM) → "TAP TO PLAY"
+   ========================================================================= */
+const TITLE = {
+  stage: 0,
+  show() {
+    G.title = true; AUDIO.setWorld('title');
+    const t = $('title'); t.hidden = false; requestAnimationFrame(() => t.classList.add('in'));
+    const go = (e) => {
+      if (this.stage === 0) {
+        this.stage = 1; AUDIO.start(); AUDIO.setWorld('title'); t.classList.add('armed');
+        $('ttBtn').textContent = 'TAP TO PLAY'; $('ttHint').textContent = 'Lyn & Hector await your command';
+        return;
+      }
+      if (this.stage === 1 && e.target.closest('#ttBtn, .tt-tap')) this.play();
+    };
+    t.addEventListener('click', go);
+  },
+  play() {
+    if (this.stage !== 1) return; this.stage = 2;
+    SFX.cast(true); const t = $('title'); t.classList.add('out');
+    AUDIO.setWorld(G.secret ? 'void' : 'normal');
+    setTimeout(() => { t.hidden = true; G.title = false; last = performance.now(); }, 900);
+  },
+};

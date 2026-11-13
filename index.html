@@ -1,12 +1,5 @@
-<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#04131b">
-<style>:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#04131b;color:#fff}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style>
-<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
-<title>Blazing Vanguard</title>
+<!doctype html><html><head><meta charset=utf8><meta name="theme-color" content="#04131b"><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Blazing Blade</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800;900&family=Alegreya+Sans:wght@500;700;800&display=swap">
 <style>
@@ -912,6 +905,38 @@ button:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
 #lvup .lv-word b{background:var(--gold-grad);-webkit-background-clip:text;background-clip:text;color:transparent;filter:var(--pxo) drop-shadow(0 0 14px rgba(255,210,90,.9))}
 #lvup .lv-sub{font-size:13px;letter-spacing:0}
 #sheet{z-index:3}
+
+/* ---------- title screen ---------- */
+#title{position:absolute;inset:0;z-index:9;pointer-events:auto;cursor:pointer;overflow:hidden;background:#06121a}
+#title .tt-art{position:absolute;inset:-3%;background:url(sprites/title_art.webp) center top/cover no-repeat;animation:ttken 22s ease-in-out infinite alternate;opacity:0;transition:opacity 1s}
+#title.in .tt-art{opacity:1}
+@keyframes ttken{from{transform:scale(1.02) translate(0,0)}to{transform:scale(1.1) translate(-1.5%,1%)}}
+#title .tt-rays{position:absolute;left:-30%;top:-30%;width:120%;height:90%;background:repeating-conic-gradient(from 200deg at 0% 0%,rgba(255,248,220,.16) 0 3deg,transparent 3deg 9deg);mix-blend-mode:screen;animation:ttrays 9s ease-in-out infinite alternate;pointer-events:none}
+@keyframes ttrays{to{transform:rotate(6deg);opacity:.6}}
+#title .tt-embers{position:absolute;inset:0;pointer-events:none;mix-blend-mode:screen;
+  background-image:radial-gradient(2px 2px at 10% 90%,#ffd890,transparent),radial-gradient(3px 3px at 30% 80%,#bff6ff,transparent),radial-gradient(2px 2px at 55% 95%,#ffe0a0,transparent),radial-gradient(3px 3px at 75% 85%,#ffb060,transparent),radial-gradient(2px 2px at 90% 92%,#bff6ff,transparent),radial-gradient(2px 2px at 45% 70%,#fff,transparent);
+  background-size:540px 600px;animation:ttember 6s linear infinite}
+@keyframes ttember{from{background-position:0 0}to{background-position:-60px -600px}}
+#title .tt-shine{position:absolute;left:12%;right:12%;top:5%;height:15%;pointer-events:none;background:linear-gradient(105deg,transparent 35%,rgba(255,255,255,.75) 50%,transparent 65%);mix-blend-mode:overlay;transform:translateX(-140%);animation:ttshine 4.5s 1.2s ease-in-out infinite}
+@keyframes ttshine{0%{transform:translateX(-140%)}35%,100%{transform:translateX(140%)}}
+#title .tt-bottom{position:absolute;left:0;right:0;bottom:0;padding:120px 16px 26px;display:flex;flex-direction:column;align-items:center;gap:10px;
+  background:linear-gradient(180deg,transparent,rgba(4,16,24,.75) 45%,rgba(4,16,24,.95))}
+#ttBtn{min-width:300px;height:64px;padding:0 30px;border-radius:999px;border:3px solid #fff;cursor:pointer;
+  background:linear-gradient(180deg,#8ff0f4 0%,#3bb8cc 42%,#14819b 52%,#1b93ad 100%);
+  box-shadow:0 0 0 3px #07303d,0 0 0 6px var(--gold-d),0 0 30px rgba(127,230,239,.8),inset 0 2px 0 rgba(255,255,255,.6);
+  font-family:var(--f-head);font-size:30px;color:#fff;text-shadow:2px 0 0 #07303d,-2px 0 0 #07303d,0 2px 0 #07303d,0 -2px 0 #07303d,0 3px 0 rgba(0,0,0,.5);
+  animation:ttpulse 1.3s ease-in-out infinite}
+#title.armed #ttBtn{background:linear-gradient(180deg,#fff2b8 0%,#f0c95a 42%,#b98a26 52%,#cf9e36 100%);box-shadow:0 0 0 3px #3a2404,0 0 0 6px #fff,0 0 40px rgba(255,200,90,.95),inset 0 2px 0 rgba(255,255,255,.7);
+  text-shadow:2px 0 0 #3a2404,-2px 0 0 #3a2404,0 2px 0 #3a2404,0 -2px 0 #3a2404,0 3px 0 rgba(0,0,0,.5);animation:ttpulse .9s ease-in-out infinite}
+@keyframes ttpulse{0%,100%{transform:scale(1)}50%{transform:scale(1.07)}}
+.tt-hint{font-size:13px;color:#fff;text-shadow:1px 0 0 #0a1820,-1px 0 0 #0a1820,0 1px 0 #0a1820,0 -1px 0 #0a1820}
+.tt-foot{font-size:10px;color:rgba(255,255,255,.55)}
+#title .tt-flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none}
+#title.out{animation:ttout .9s ease forwards}
+#title.out .tt-flash{animation:ttflash .9s ease forwards}
+@keyframes ttout{0%,40%{opacity:1}100%{opacity:0}}
+@keyframes ttflash{0%{opacity:0}25%{opacity:.95}100%{opacity:0}}
+@media (prefers-reduced-motion: reduce){#title .tt-art,#title .tt-rays,#title .tt-embers,#title .tt-shine,#ttBtn{animation:none}}
 /* spread the plate rows over the full 352px panel */
 #panel{gap:11px}
 .plate{margin-top:14px;height:42px}
@@ -923,8 +948,6 @@ button:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
 #sndBtn{white-space:nowrap}
 </style>
 
-</head>
-<body>
 <div id="stage">
   <canvas id="gl"></canvas>
   <div id="vignette"></div>
@@ -997,9 +1020,18 @@ button:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
     <div id="cine" hidden><div class="cn-bg"></div><div class="cn-lines"></div><div class="cn-bar t"></div><div class="cn-bar b"></div>
       <img id="cnArt" class="cn-art" alt=""><div id="cnEyes" class="cn-eyes"></div>
       <div class="cn-title"><b id="cnTitle"></b><small id="cnSub"></small></div><div class="cn-flash"></div></div>
+    <div id="title" hidden>
+      <div class="tt-art"></div><div class="tt-rays"></div><div class="tt-embers"></div><div class="tt-shine"></div>
+      <div class="tt-bottom">
+        <button type="button" id="ttBtn" class="tt-tap">TAP TO START</button>
+        <div class="tt-hint" id="ttHint">Tap anywhere to begin · sound on</div>
+        <div class="tt-foot">Fan prototype · sprites © Nintendo / Intelligent Systems</div>
+      </div>
+      <div class="tt-flash"></div>
+    </div>
     <div id="gacha" hidden><div class="gx-title">Reliquary</div><div class="gx-sub" id="gxSub"></div><div class="gx-grid" id="gxGrid"></div><button type="button" class="tbtn" id="gxClose">Collect</button></div>
   </div>
-  <div id="loading"><span class="lt">Blazing Vanguard</span><small id="loadTxt">unrolling the map…</small></div>
+  <div id="loading"><span class="lt">Blazing Blade</span><small id="loadTxt">unrolling the map…</small></div>
 </div>
 
 <script src="vendor/three.min.js"></script>
@@ -1019,5 +1051,3 @@ button:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
 <script src="game.js"></script>
 
 </body></html>
-</body>
-</html>
