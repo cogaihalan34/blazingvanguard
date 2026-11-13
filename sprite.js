@@ -8,7 +8,7 @@ void main(){ vec4 t = texture2D(map, vUv); if (t.a < .5) discard; vec3 c = t.rgb
 const SPR_EV = { shake: 'vibranium_normal', shakeH: 'vibranium_hard', dash: 'dash', hitstop: 'hitstop', back: 'move_combo_back' };
 let ENTRY_SEQ = 1;
 /* sheets whose art faces left: mirrored at draw time so every hero faces the enemy (right) */
-const SPRITE_FLIP = { lyn: true, hector: true };
+const SPRITE_FLIP = { lyn: true, hector: true, e_gwyllgi: true, e_maelduin: true, e_mogall: true, e_revenant: true, e_dracula: true };
 
 async function loadSprite(key) {
   const D = SPRITE_DATA[key];
@@ -133,3 +133,44 @@ function artFace(key, size, bg) {
   const a = HERO_ART[key]; if (!a || !a.img) return null;
   return makeCanvas(size, size, (c) => { if (bg) bg(c, size, size); const [x, y, s] = a.face; c.drawImage(a.img, x, y, s, s, 0, 0, size, size); });
 }
+
+/* ---------- GBA spell animations (Fire Emblem battle FX), additive, frame-stepped ---------- */
+const SFX_FS = `uniform sampler2D map; uniform float uAlpha; uniform vec3 uCol; varying vec2 vUv;
+void main(){ vec3 c = texture2D(map, vUv).rgb * uCol * uAlpha; gl_FragColor = vec4(c, 1.0); }`;
+const FXT = {}, SHEET_FX = [];
+async function loadSheetFx() {
+  await Promise.all(Object.entries(FX_DATA).map(([k, d]) => loadImage(d.png).then(img => {
+    const t = new THREE.Texture(img); t.magFilter = THREE.NearestFilter; t.minFilter = THREE.NearestFilter; t.generateMipmaps = false; t.needsUpdate = true; FXT[k] = t;
+  }).catch(() => null)));
+}
+/* o: { scale, sx, sy, color, ro, loop, life, speed, screen, alpha, at: {frame: fn} } ; (x, y) = bottom-centre in world units */
+function sheetFx(name, x, y, o = {}) {
+  const D = FX_DATA[name]; if (!D || !FXT[name]) return null;
+  const u = { map: { value: FXT[name] }, uRect: { value: new THREE.Vector4() }, uAlpha: { value: o.alpha ?? 1 }, uCol: { value: new THREE.Color(o.color ?? 0xffffff) } };
+  const m = new THREE.Mesh(fxGeo, new THREE.ShaderMaterial({ uniforms: u, vertexShader: SPR_VS, fragmentShader: SFX_FS, transparent: true, depthTest: false, depthWrite: false,
+    blending: THREE.CustomBlending, blendSrc: THREE.OneFactor, blendDst: THREE.OneFactor }));
+  m.renderOrder = o.ro ?? 63; m.frustumCulled = false; scene.add(m);
+  const f = Object.assign({ m, u, D, name, x, y, t: 0, fi: -1, scale: 4.5, speed: 1, fired: {} }, o);
+  f.sx = o.sx ?? f.scale; f.sy = o.sy ?? f.scale;
+  SHEET_FX.push(f); stepSheetFx(f, 0); return f;
+}
+function stepSheetFx(f, dt) {
+  const D = f.D;
+  f.t += dt * f.speed;
+  let i = Math.floor(f.t / D.dt);
+  const life = f.life ?? (f.loop ? 1e9 : D.n * D.dt);
+  if (f.t >= life || f.dead) { scene.remove(f.m); f.m.material.dispose(); return false; }
+  if (f.loop) i %= D.n; else i = Math.min(D.n - 1, i);
+  if (f.at) for (const k in f.at) if (!f.fired[k] && i >= +k) { f.fired[k] = 1; f.at[k](f); }
+  if (i !== f.fi) {
+    f.fi = i; const c = i % D.cols, r = Math.floor(i / D.cols);
+    f.u.uRect.value.set(c * D.w / D.W, 1 - (r + 1) * D.h / D.H, D.w / D.W, D.h / D.H);
+  }
+  if (f.fade) f.u.uAlpha.value = (f.alpha ?? 1) * Math.min(1, (life - f.t) / f.fade);
+  const w = D.w * f.sx, h = D.h * f.sy;
+  if (f.screen) f.m.position.set(G.camX + VW / 2 + (f.dx || 0), GROUND + (f.dy ?? 420), 0);
+  else f.m.position.set(f.x, f.y + h / 2, 0);
+  f.m.scale.set(w * (f.flip ? -1 : 1), h, 1);
+  return true;
+}
+function updateSheetFx(dt) { for (let i = SHEET_FX.length - 1; i >= 0; i--) if (!stepSheetFx(SHEET_FX[i], dt)) SHEET_FX.splice(i, 1); }

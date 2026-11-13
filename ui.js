@@ -191,10 +191,10 @@ const UI = {
       else { const p = document.createElement('i'); if (i < G.wave) p.className = 'done'; else if (i === G.wave) p.className = 'now'; w.appendChild(p); }
     }
     $('floorN').textContent = G.floor;
-    $('floorName').textContent = FLOORS[(G.floor - 1) % FLOORS.length];
+    $('floorName').textContent = G.secret ? 'The Upside Down' : FLOORS[(G.floor - 1) % FLOORS.length];
     const dn = DIFF_NAME[difficulty()];
     $('diffSub').textContent = dn[0] + dn.slice(1).toLowerCase() + ' · mlvl ' + mlvlNow();
-    $('objTxt').textContent = G.wave === G.wavesPerFloor ? 'Defeat ' + BOSS_DEF.name : `Rout the enemy · ${G.wave}/${G.wavesPerFloor - 1}`;
+    $('objTxt').textContent = G.secret ? 'Defeat Count Dracula' : G.wave === G.wavesPerFloor ? 'Defeat ' + BOSS_DEF.name : `Rout the enemy · ${G.wave}/${G.wavesPerFloor - 1}`;
     $('diffTxt').innerHTML = `<b>${dn}</b> · mlvl ${mlvlNow()}`;
     $('diffTxt').className = 'diff d' + difficulty();
   },
@@ -596,7 +596,7 @@ const UI = {
     fx.appendChild(el);
     const a = el.animate([{ transform: 'translate(0,0) scale(1.3)' }, { transform: `translate(${(tx - ux) * .3}px,${(ty - uy) * .1 - 60}px) scale(1.1)`, offset: .35 }, { transform: `translate(${tx - ux}px,${ty - uy}px) scale(.7)` }],
       { duration: 520 + Math.random() * 200, easing: 'cubic-bezier(.5,0,.8,.6)' });
-    a.onfinish = () => { el.remove(); G.gold += value; SFX.coin(); const g = $('goldWrap'); g.classList.remove('bump'); void g.offsetWidth; g.classList.add('bump'); };
+    a.onfinish = () => { el.remove(); G.gold += value; SFX.coin(); QUESTS.event('gold', value); const g = $('goldWrap'); g.classList.remove('bump'); void g.offsetWidth; g.classList.add('bump'); };
   },
   hurtFlash() { const v = $('hurtVig'); v.classList.remove('on'); void v.offsetWidth; v.classList.add('on'); },
   skillBanner(h, i) {

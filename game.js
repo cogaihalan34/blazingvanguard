@@ -106,6 +106,7 @@ const G = {
   gold: 0, floor: 1, wave: 1, wavesPerFloor: 5, mobs: [], boss: null,
   party: [], active: 0, tagCd: 0, wipe: 0,
   combo: 0, comboT: 0, dmgLog: [], waveSpawned: false, clearT: 0,
+  amb: new THREE.Color(1, 1, 1), ambHero: new THREE.Color(1, 1, 1), playtime: 30, secret: null,
   filter: { white: true, magic: false }, autoStat: false, autoSkill: false, newItems: 0, inv: [], gems: 300, wind: 0,
   get hero() { return this.party[this.active]; },
   /* next hero in the tag rotation: the first one after the active hero that is not recovering */
@@ -142,7 +143,7 @@ class Hero {
     this.belt = [[], [], [], []];
     this.skillCd = Array(8).fill(0); this.skillPtr = 0; this.queue = -1; this.sinceSkill = 0;
     this.skillLv = [1, 0, 0, 0, 0, 0, 0, 0]; this.passLv = [0, 0, 0, 0]; this.skillPts = 0;
-    this.mode = 'bench'; this.freeze = 0; this.x = 0; this.vx = 0; this.reviveT = 0; this.heals = []; this.invuln = 0; this.potCd = 0;
+    this.mode = 'bench'; this.freeze = 0; this.x = 0; this.vx = 0; this.y = 0; this.vy = 0; this.air = false; this.jvx = 0; this.ignorePlat = null; this.reviveT = 0; this.heals = []; this.invuln = 0; this.potCd = 0;
     this.hitSets = new Map(); this.flashRed = 0;
     this.view.state.addListener({ event: (e, ev) => this.onEvent(ev.data.name) });
     this.S = computeStats(this, null, 0);
@@ -166,6 +167,7 @@ class Hero {
   enter(x, tag) {
     scene.add(this.view.mesh); scene.add(this.shadow);
     this.x = x; this.vx = 0; this.freeze = 0; this.hitSets.clear();
+    const prev = G.hero && G.hero !== this ? G.hero : null; this.y = prev ? prev.y : 0; this.air = prev ? prev.air : false; this.vy = prev ? prev.vy : 0; this.jvx = prev ? prev.jvx : 0;
     if (tag) {
       this.play('dash_attack', false); this.mode = 'tagin'; this.invuln = .6;
       this.nextAt = Math.max(this.meta.cancel, this.meta.boxEnd) + .08;
@@ -209,6 +211,7 @@ class Hero {
     SFX.cast(i >= 6);
     if (i >= 6) AUDIO.say(this.key, 'ult', true); else if (Math.random() < .3) AUDIO.say(this.key, 'skill');
     if (i >= 6) { UI.cutIn(this, i); CUT.start(this); G.hitstop = Math.max(G.hitstop, .45); }
+    playSkillFx(this, i);
   }
   doCombo() {
     SFX.swing(this.comboIdx === this.cls.combo.length - 1);
@@ -277,7 +280,7 @@ class Hero {
     d = Math.max(1, Math.round(d));
     this.life -= d; this.flashRed = 1; SFX.hurt();
     if (d > S.lifeMax / 8 && Math.random() < .3) AUDIO.say(this.key, 'hurt');
-    UI.number(this.x, hy, '-' + d, 'e');
+    UI.number(this.x, hy + this.y, '-' + d, 'e');
     UI.hurtFlash();
     if (this.life <= 0) { this.die(); return; }
     // hit recovery stagger when a hit takes more than 1/12 of life (as in D2)
@@ -337,18 +340,21 @@ class Hero {
     let adt = dt;
     if (this.freeze > 0) { this.freeze -= dt; adt = 0; }
     if (this.mode !== 'hurt') this.view.state.timeScale = S.speed;
-    this.view.sk.x = this.x; this.view.sk.y = GROUND;
+    this.view.sk.x = this.x; this.view.sk.y = GROUND + this.y;
     this.view.update(adt);
     this.checkHits();
     this.think(dt);
+    heroAirTick(this, dt);
     if (Math.abs(this.vx) > 1 && this.freeze <= 0) {
       let nx = this.x + this.vx * dt;
       const t = this.target();
-      if (t && (this.cls.range < 300 || this.vx > 0)) nx = Math.min(nx, Math.max(this.x, t.left() - 40));
+      if (t && sameLevel(this, t) && (this.cls.range < 300 || this.vx > 0)) nx = Math.min(nx, Math.max(this.x, t.left() - 40));
       this.x = Math.max(this.x - 400, nx);
       this.vx *= Math.pow(.0005, dt);
     }
-    this.shadow.position.set(this.x, GROUND + 4, 0); this.shadow.scale.set(220, 46, 1);
+    const fl = floorBelow(this.x, this.y), shk = Math.max(.35, 1 - (this.y - fl) / 500);
+    this.shadow.position.set(this.x, GROUND + fl + 4, 0); this.shadow.scale.set(220 * shk, 46 * shk, 1);
+    this.view.u.uTint.value.copy(G.ambHero);
     this.flashRed = Math.max(0, this.flashRed - dt * 5);
     this.view.u.uFlash.value = this.flashRed * .55; this.view.u.uFlashCol.value.setRGB(1, .1, .15);
     this.view.u.uAlpha.value = this.invuln > 0 && this.mode !== 'tagin' ? .6 + .4 * Math.sin(G.time * 40) : 1;
@@ -373,10 +379,12 @@ class Hero {
       return;
     }
     if (this.mode === 'hurt') { if (tt >= this.meta.dur) { this.mode = 'idle'; this.view.state.timeScale = this.S.speed; } else return; }
+    if (this.air) return;
     const tgt = this.target();
     const range = this.cls.range;
     const dist = tgt ? tgt.left() - this.x : 1e9;
-    const inRange = tgt && dist <= range;
+    const same = !tgt || sameLevel(this, tgt);
+    const inRange = tgt && dist <= range && same;
     if (this.mode === 'appear') { if (tt >= this.meta.dur) this.mode = 'idle'; else return; }
     if (this.mode === 'tagin') { if (tt < this.nextAt) return; this.mode = 'idle'; }
     if (this.mode === 'combo' || this.mode === 'skill') {
@@ -397,10 +405,11 @@ class Hero {
     }
     if (this.anim === 'attack_block' && tt < this.meta.dur) return;
     if (G.waveHold) { if (this.anim !== 'idle') { this.mode = 'idle'; this.play('idle', true); } return; }
+    if (tgt && !same && dist < range + 340 && !tgt.dead && (this.mode === 'idle' || this.mode === 'run' || this.mode === 'combo' || this.mode === 'skill')) { const tl = levelOf(tgt); heroJumpTo(this, tl === null ? 0 : tl, tgt); return; }
     if (this.mode !== 'run') { this.mode = 'run'; this.play('move', true); }
     let nx = this.x + 380 * this.S.run * dt;
-    if (tgt) nx = Math.min(nx, tgt.left() - range + 10);
-    for (const e of allEnemies()) if (!e.dead && e.x < nx + 40 && e.x > this.x - 900) nx = Math.min(nx, Math.max(this.x, e.left() - 40));
+    if (tgt && same) nx = Math.min(nx, tgt.left() - range + 10);
+    for (const e of allEnemies()) if (!e.dead && sameLevel(this, e) && e.x < nx + 40 && e.x > this.x - 900) nx = Math.min(nx, Math.max(this.x, e.left() - 40));
     this.x = nx;
   }
   active_idx() { return this.idx; }
@@ -657,20 +666,26 @@ const ENEMY_DEFS = {
   soldier: { name: 'Soldier', scale: 1, hw: 110, hh: 270, spd: 150, floor: 1, mult: { life: .9, dmg: .95 } },
   assassin: { name: 'Assassin', scale: 1, hw: 110, hh: 250, spd: 230, floor: 2, mult: { life: .8, dmg: 1.2 } },
   shade: { name: 'Black Fang Shade', scale: 1, hw: 110, hh: 250, spd: 240, floor: 3, mult: { life: 1, dmg: 1.25 }, elem: 'cold' },
+  revenant: { name: 'Revenant', scale: 1, hw: 120, hh: 270, spd: 95, floor: 1, mult: { life: 1.5, dmg: .9, xp: 1.2 } },
+  gwyllgi: { name: 'Gwyllgi', scale: 1, hw: 220, hh: 210, spd: 300, floor: 2, mult: { life: .9, dmg: 1.15 } },
+  mogall: { name: 'Mogall', scale: 1, hw: 130, hh: 160, spd: 150, floor: 2, fly: true, ranged: 520, col: 0xff5070, mult: { life: .8, dmg: 1 }, elem: 'ltng' },
+  maelduin: { name: 'Maelduin', scale: 1, hw: 210, hh: 320, spd: 170, floor: 3, mult: { life: 2.1, dmg: 1.3, xp: 1.8 } },
 };
 const BOSS_DEF = { key: 'batta', name: 'Batta the Beast', scale: 1, hw: 200, hh: 360, ranged: 0, col: 0x60c040 };
 const SPINE_MOBS = [];
+const BOSSES = { batta: BOSS_DEF, dracula: DRAC_DEF };
 
 class SpineMob {
   constructor(key, x, elite, boss) {
-    const D = boss ? BOSS_DEF : ENEMY_DEFS[key];
+    const D = boss ? BOSSES[key] : ENEMY_DEFS[key];
     this.D = D; this.key = key; this.boss = !!boss; this.elite = !!elite; this.asset = ASSETS['e_' + key];
     const sc = D.scale * (elite ? 1.15 : 1); this.sc = sc;
     this.view = new SpriteView(this.asset, sc);
     this.view.sk.scaleX = -sc; // sheets face right: flip to face the heroes
     this.asset.reach = boss ? 380 : 340;
     this.view.mesh.renderOrder = boss ? 18 : 15; scene.add(this.view.mesh);
-    if (elite) this.view.u.uTint.value.setRGB(.8, .9, 1.45);
+    this.baseTint = elite ? new THREE.Color(.8, .9, 1.45) : new THREE.Color(1, 1, 1);
+    this.floorY = 0; this.plat = null; this.hopT = 0;
     this.shadow = new THREE.Mesh(fxGeo, new THREE.MeshBasicMaterial({ map: TX.shadow, transparent: true, depthTest: false, depthWrite: false, opacity: .75 }));
     this.shadow.renderOrder = 9; scene.add(this.shadow);
     this.hpBg = new THREE.Mesh(fxGeo, new THREE.MeshBasicMaterial({ color: 0x0a0408, depthTest: false, depthWrite: false, transparent: true }));
@@ -687,11 +702,11 @@ class SpineMob {
     };
     this.vx = 0; this.vy = 0; this.air = false;
     if (!this.an.attacks.length) this.an.attacks = [findAnim(A, /attack/) || this.an.idle];
-    const base = boss ? { life: 10, dmg: 1.15, xp: 18 } : Object.assign({}, D.mult);
+    const base = boss ? (key === 'dracula' ? { life: 22, dmg: 1.75, xp: 45 } : { life: 10, dmg: 1.15, xp: 18 }) : Object.assign({}, D.mult);
     if (elite) { base.life *= 3; base.dmg *= 1.5; base.xp = 3; }
-    Object.assign(this, monStats(mlvlNow() + (boss ? 3 : elite ? 2 : 0), base));
+    Object.assign(this, monStats(mlvlNow() + (boss ? (key === 'dracula' ? 6 : 3) : elite ? 2 : 0), base));
     this.maxHp = this.life; this.hp = this.life;
-    if (boss) this.elem = { type: 'cold', lo: Math.round(this.mlvl * .5), hi: Math.round(this.mlvl * 1.3 + 2) };
+    if (boss) this.elem = { type: key === 'dracula' ? 'fire' : 'cold', lo: Math.round(this.mlvl * .5), hi: Math.round(this.mlvl * 1.3 + 2) };
     else if (elite || D.elem) this.elem = { type: D.elem || pick(['fire', 'cold', 'ltng']), lo: Math.round(this.mlvl * .5), hi: Math.round(this.mlvl * 1.2 + 2) };
     this.x = x; this.y = D.fly ? rnd(60, 140) : 0; this.dead = false; this.flash = 0; this.freeze = 0; this.stun = 0; this.t = 0;
     this.mode = 'walk'; this.atkCd = rnd(.5, 1.4); this.stop = boss ? 200 : (D.ranged ? D.ranged * rnd(.7, 1) : rnd(60, 200)); this.showHp = 0; this.hitSets = new Map();
@@ -706,12 +721,13 @@ class SpineMob {
   }
   fire() {
     const h = G.hero; if (!h || h.dead) return;
-    const sx = this.x - 60, sy = GROUND + 190;
+    const sx = this.x - 60, sy = GROUND + this.y + Math.min(190, this.D.hh * .55);
     const col = this.D.col || (this.elem && this.elem.type === 'cold' ? 0x88aaff : 0xff6060);
-    const f = spawnFx({ tex: TX.streak, x: sx, y: sy, vx: -1400, vy: 0, sx: 90, sy: 10, life: Math.max(.1, (sx - h.x) / 1400), color: col, alignVel: false, rot: Math.PI, ro: 57 });
+    const tx = h.x + 30, ty = GROUND + h.y + 190, dx = tx - sx, dy = ty - sy, L = Math.max(1, Math.hypot(dx, dy));
+    const f = spawnFx({ tex: TX.streak, x: sx, y: sy, vx: dx / L * 1400, vy: dy / L * 1400, sx: 90, sy: 10, life: Math.max(.1, L / 1400), color: col, alignVel: true, ro: 57 });
     const k = this.boss ? .45 : 1;
     const src = { ar: this.ar, mlvl: this.mlvl, dmg: [this.dmg[0] * k, this.dmg[1] * k], elem: this.elem ? { type: this.elem.type, lo: this.elem.lo * k, hi: this.elem.hi * k } : null };
-    f.onEnd = () => { if (G.hero === h) { h.receive(src); hitSpark(h.x + 30, GROUND + 200, false, false, col); } };
+    f.onEnd = () => { if (G.hero === h) { h.receive(src); hitSpark(h.x + 30, GROUND + h.y + 200, false, false, col); } };
   }
   left() { return this.x - this.D.hw / 2; }
   cy() { return GROUND + this.y + this.D.hh * .5; }
@@ -747,12 +763,17 @@ class SpineMob {
     this.flash = Math.max(0, this.flash - dt * 6); this.showHp = Math.max(0, this.showHp - dt);
     if (!this.boss) {
       if (Math.abs(this.vx) > 1) { this.x += this.vx * adt; this.vx *= Math.pow(.003, adt); }
+      if (!this.air && !this.D.fly && this.floorY > 0 && !platAt(this.x, this.floorY)) { this.air = true; this.vy = Math.min(this.vy, 0); this.plat = null; }
       if (this.air) {
+        const prevY = this.y;
         this.vy -= GRAV * adt; this.y += this.vy * adt;
+        const lp = this.vy < 0 ? landingFor(this.x, prevY, this.y, null) : null;
+        if (lp && this.vy < 0) { this.y = Math.min(this.y, lp.y); if (this.y <= lp.y) { this.y = lp.y - .001; } }
         if (!this.dead && this.anim === this.an.knockUp && this.entry.trackTime >= this.meta.dur && this.an.knockFly) this.play(this.an.knockFly, true);
-        if (this.y <= 0 && this.vy < 0) {
-          this.y = 0;
-          spawnFx({ tex: TX.smoke, x: this.x, y: GROUND + 10, sx: 140, sy: 50, sx1: 320, sy1: 100, life: .4, color: 0xc8d4e8, a0: .65, ro: 16 });
+        const fl = lp ? lp.y : 0;
+        if (this.y <= fl && this.vy < 0) {
+          this.y = fl; this.floorY = fl; this.plat = lp;
+          spawnFx({ tex: TX.smoke, x: this.x, y: GROUND + fl + 10, sx: 140, sy: 50, sx1: 320, sy1: 100, life: .4, color: 0xc8d4e8, a0: .65, ro: 16 });
           if (this.vy < -780) { this.vy = -this.vy * .3; shake(4, .08); }
           else { this.vy = 0; this.air = false; if (!this.dead) { this.play(this.an.knockLand || this.an.standUp || this.an.idle, false); this.mode = 'land'; } }
         }
@@ -761,7 +782,8 @@ class SpineMob {
     this.view.sk.x = this.x + (this.freeze > 0 ? rnd(-5, 5) : 0); this.view.sk.y = GROUND + this.y + (this.D.fly ? Math.sin(this.t * 3) * 18 : 0);
     this.view.update(adt);
     this.view.u.uFlash.value = this.flash * .75; this.view.u.uFlashCol.value.setRGB(1, .95, .9);
-    this.shadow.position.set(this.x, GROUND + 4, 0); this.shadow.scale.set(this.D.hw * 1.6, this.D.hw * .34, 1);
+    this.view.u.uTint.value.copy(this.baseTint).multiply(G.amb);
+    this.shadow.position.set(this.x, GROUND + floorBelow(this.x, this.y) + 4, 0); this.shadow.scale.set(this.D.hw * 1.6, this.D.hw * .34, 1);
     const tt = this.entry.trackTime;
     if (this.dead) {
       this.deadT += dt;
@@ -775,10 +797,10 @@ class SpineMob {
         if (b.fresh) this.hitSets.set(b.slot, new Set());
         const set = this.hitSets.get(b.slot);
         if (set.has(lead) || lead.dead) continue;
-        if (b.box[1] < lead.x - 60 || b.box[0] > lead.x + 60) continue;
+        if (b.box[1] < lead.x - 60 || b.box[0] > lead.x + 60 || Math.abs(lead.y - this.y) > (this.boss ? 260 : 140)) continue;
         set.add(lead); lead.receive(this); hitSpark(lead.x + 20, GROUND + 200, false, false, 0x9a40ff);
       }
-      if (!this.view.hitSlots.length && !this.didHit && tt > this.meta.dur * .45) { this.didHit = true; if (Math.abs(this.x - lead.x) < 360) lead.receive(this); }
+      if (!this.view.hitSlots.length && !this.didHit && tt > this.meta.dur * .45) { this.didHit = true; if (Math.abs(this.x - lead.x) < 360 && Math.abs(lead.y - this.y) < 140) lead.receive(this); }
     }
     const stopX = lead.x + this.stop + this.D.hw / 2;
     if (this.mode === 'appear') { if (tt >= this.meta.dur) { this.mode = 'walk'; this.play(this.an.move, true); } }
@@ -788,7 +810,11 @@ class SpineMob {
       if (tt >= this.meta.dur) { if (this.an.standUp && this.anim !== this.an.standUp) this.play(this.an.standUp, false); else { this.mode = 'walk'; this.atkCd = Math.max(this.atkCd, .6); this.play(this.an.move, true); } }
     }
     else if (this.mode === 'walk') {
-      if (this.x > stopX) { this.x -= (this.D.spd || 160) * adt; if (this.anim !== this.an.move) this.play(this.an.move, true); }
+      const onPlat = this.plat && !this.D.fly && !this.air;
+      if (onPlat && this.x <= this.plat.x0 + 34 && lead.x < this.plat.x0 && lead.y < this.floorY - 40) {
+        if (this.anim !== this.an.idle) this.play(this.an.idle, true);
+        this.hopT += adt; if (this.hopT > 1.1) { this.hopT = 0; this.air = true; this.vy = 380; this.vx = -340; this.plat = null; this.floorY = 0; }
+      } else if (this.x > stopX) { this.x -= (this.D.spd || 160) * adt; if (onPlat) this.x = Math.max(this.x, this.plat.x0 + 30); if (this.anim !== this.an.move) this.play(this.an.move, true); }
       else { if (this.anim !== this.an.idle) this.play(this.an.idle, true); this.atkCd -= adt; if (this.atkCd <= 0) this.attack(); }
     } else if (this.mode === 'atk') {
       if (tt >= this.nextAt) {
@@ -810,6 +836,7 @@ class SpineMob {
     if (!cont) this.chain = this.boss ? (Math.random() < .5 ? 2 : 1) : 0;
     const n = pick(pool);
     this.play(n, false); this.mode = 'atk'; this.didHit = false;
+    if (this.key === 'dracula' && /^skill/.test(n)) draculaSpecial(this, n);
     this.nextAt = Math.max(this.meta.cancel, this.meta.boxEnd) + .2;
     if (this.nextAt > this.meta.dur) this.nextAt = this.meta.dur;
   }
@@ -821,7 +848,7 @@ function makeBoss(x) { return new SpineMob('batta', x, false, true); }
 function catchUp(e, lead) {
   if (e.dead || e.x > lead.x - 380) return;
   spawnFx({ tex: TX.smoke, x: e.x, y: GROUND + 150, sx: 160, sy: 220, sx1: 320, sy1: 360, life: .4, color: 0x7050a0, a0: .6, ro: 17 });
-  e.x = lead.x + rnd(420, 620);
+  e.x = lead.x + rnd(420, 620); if (!(e.D && e.D.fly)) { e.y = 0; e.floorY = 0; e.plat = null; e.air = false; e.vy = 0; }
   spawnFx({ tex: TX.smoke, x: e.x, y: GROUND + 150, sx: 160, sy: 220, sx1: 320, sy1: 360, life: .4, color: 0x7050a0, a0: .6, ro: 17 });
 }
 function allEnemies() { const a = G.mobs.slice(); if (G.boss && !G.boss.dead) a.push(G.boss); return a; }
@@ -837,12 +864,13 @@ function dealDamage(hero, e, mult, heavy, isSkill) {
     UI.number(e.x + rnd(-30, 30), hb[3] + 20, 'MISS', 'm'); return;
   }
   let d = rnd(S.min, S.max) * mult, crit = false, cb = false, elemK = null, el = 0;
-  if (Math.random() < S.ds / 100) { d *= 2; crit = true; }
+  if (Math.random() < S.ds / 100) { d *= 2; crit = true; QUESTS.event('crit'); }
   for (const k of ['fire', 'cold', 'ltng']) { const r = S[k]; if (r[1] > 0) { el += rnd(r[0], r[1]); elemK = elemK || k; } }
   d += el * Math.min(1, mult);
   if (S.cb > 0 && Math.random() < S.cb / 100) { d += e.hp * (e.boss ? .0625 : .25); cb = true; }
   d = Math.max(1, Math.round(d));
   SFX.hit(heavy, crit || cb);
+  if (crit || cb || (heavy && isSkill)) hitSheetFx(e, crit || cb);
   e.hit(d, heavy || crit || cb, (isSkill && Math.random() < .45) || (heavy && Math.random() < .35));
   if (S.ll) hero.life = Math.min(S.lifeMax, hero.life + d * S.ll / 100 * (e.boss ? .5 : 1));
   if (S.ml) hero.mana = Math.min(S.manaMax, hero.mana + d * S.ml / 100);
@@ -890,6 +918,12 @@ function onKill(e, x, y, kind) {
   const bonus = kind === 'boss' ? 2.5 : kind === 'elite' ? 1.6 : 1;
   for (let i = 0; i < picks; i++) if (Math.random() < chance) giveItem(rollItem(mlvl, h.S.mf, bonus), x + rnd(-80, 80), y);
   if (kind === 'boss') giveItem(rollItem(mlvl + 2, h.S.mf + 100, 4), x, y + 40);
+  if (kind === 'boss' && G.secret) {
+    for (let i = 0; i < 6; i++) later(.15 * i, () => giveItem(rollItem(mlvl + 4, h.S.mf + 450, 9), x + rnd(-140, 140), y + rnd(0, 60)));
+    const gm = ri(30, 60); G.gems += gm; UI.lootFeedGem(gm);
+    SFX.victory(); later(1.2, () => AUDIO.say(G.hero.key, 'win', true));
+  }
+  QUESTS.onKill(e, kind);
 }
 function giveItem(it, x, y) {
   const q = it.q;
@@ -924,20 +958,25 @@ function spawnWave() {
   const lead = G.hero;
   const baseX = Math.max(G.camX + VW + 80, lead.x + 700);
   if (G.wave === G.wavesPerFloor) {
-    G.boss = makeBoss(baseX + 120); SFX.boss();
+    G.boss = makeBoss(baseX + 120); SFX.boss(); STORY.trigger('boss');
     UI.showBoss(true);
     UI.toast(G.boss.D.name.toUpperCase(), 'BOSS APPROACHES');
     return;
   }
   const n = 4 + G.wave + (G.floor % 3);
   const pool = SPINE_MOBS.filter(k => ENEMY_DEFS[k].floor <= G.floor);
+  const plats = makeWavePlats(baseX);
+  UI.banner(G.wave === 1 ? 'opening' : 'skirmish');
   for (let i = 0; i < n; i++) {
     const elite = G.wave >= 3 && i === n - 1;
     const x = baseX + i * rnd(80, 150);
     if (pool.length) {
       let k = pick(pool);
-      if (elite) k = G.floor >= 3 ? 'shade' : 'brigand';
-      G.mobs.push(new SpineMob(k, x, elite));
+      if (elite) k = G.floor >= 3 ? 'maelduin' : G.floor >= 2 ? 'shade' : 'brigand';
+      const m = new SpineMob(k, x, elite);
+      const p = plats.find(q => x > q.x0 + 40 && x < q.x1 - 40);
+      if (p && !m.D.fly && Math.random() < .6) { m.y = p.y; m.floorY = p.y; m.plat = p; }
+      G.mobs.push(m);
     } else G.mobs.push(new Mob(pick(G.floor === 1 && G.wave === 1 ? ['skeleton', 'skeleton', 'bat'] : ['skeleton', 'ghoul', 'bat']), x, elite));
   }
 }
@@ -946,16 +985,18 @@ function waveCleared() {
     G.floor++; G.wave = 1;
     UI.toast('FLOOR ' + (G.floor - 1) + ' PURGED', DIFF_NAME[difficulty()] + ' · ' + FLOORS[(G.floor - 1) % FLOORS.length].toUpperCase());
     for (const h of G.party) h.recalc();
+    QUESTS.event('floor', G.floor); STORY.trigger('floor');
   } else G.wave++;
   const h = G.hero; h.life = Math.min(h.S.lifeMax, h.life + h.S.lifeMax * .2);
   G.waveSpawned = false; G.clearT = 1.1;
   UI.dirtyAll(); save();
 }
 function partyWipe() {
+  if (G.secret) exitSecret(false, true);
   for (const m of G.mobs) m.dispose(); G.mobs.length = 0;
   if (G.boss) { G.boss.dispose(); G.boss = null; UI.showBoss(false); }
   const lost = Math.floor(G.gold * .05); G.gold -= lost;
-  for (const h of G.party) { h.reviveT = 0; h.mode = 'bench'; h.recalc(); h.life = h.S.lifeMax; h.mana = h.S.manaMax; }
+  for (const h of G.party) { h.reviveT = 0; h.mode = 'bench'; h.y = 0; h.air = false; h.recalc(); h.life = h.S.lifeMax; h.mana = h.S.manaMax; }
   const h = G.hero; scene.remove(h.view.mesh); h.enter(h.x, false);
   if (G.wave === G.wavesPerFloor) G.wave = 1;
   G.waveSpawned = false; G.clearT = 1.2; G.wipe = 0; UI.dirtyAll();
@@ -970,7 +1011,7 @@ function save(force) {
   if (!force && G.time - saveT < 4) return; saveT = G.time;
   try {
     const data = {
-      v: 2, floor: G.floor, gold: G.gold, gems: G.gems, active: G.active, filter: G.filter, autoStat: G.autoStat, autoSkill: G.autoSkill, seq: ITEM_SEQ, inv: G.inv,
+      v: 2, floor: G.floor, gold: G.gold, gems: G.gems, playtime: G.playtime || 0, quests: QUESTS.save(), active: G.active, filter: G.filter, autoStat: G.autoStat, autoSkill: G.autoSkill, seq: ITEM_SEQ, inv: G.inv,
       heroes: G.party.map(h => ({ level: h.level, xp: h.xp, attr: h.attr, points: h.points, equip: h.equip, belt: h.belt, skillLv: h.skillLv, passLv: h.passLv, skillPts: h.skillPts })),
     };
     localStorage.setItem(SAVE_KEY, JSON.stringify(data));
@@ -982,6 +1023,7 @@ function load() {
     const d = JSON.parse(raw); if (d.v !== 2) return false;
     G.floor = d.floor || 1; G.gold = d.gold || 0; G.active = d.active || 0; G.filter = d.filter || G.filter; G.autoStat = !!d.autoStat; G.autoSkill = !!d.autoSkill; ITEM_SEQ = d.seq || 1;
     if (typeof d.gems === 'number') G.gems = d.gems;
+    G.playtime = d.playtime || 30; QUESTS.load(d.quests);
     G.inv = (d.inv || []).filter(it => BASE[it.base]);
     d.heroes.forEach((s, i) => {
       const h = G.party[i]; if (!h || !s) return;
@@ -1028,8 +1070,11 @@ function frame(now) {
   const lead = G.hero;
   if (G.wipe > 0) { G.wipe -= real; if (G.wipe <= 0) partyWipe(); }
   const alive = G.mobs.some(m => !m.dead) || (G.boss && !G.boss.dead);
-  if (!G.waveSpawned) { G.clearT -= dt; if (G.clearT <= 0) spawnWave(); }
+  tickLater(dt);
+  if (G.secret) { if (G.secret.bossUp && !G.boss && !G.secret.ending) { G.secret.ending = true; later(3.2, () => exitSecret(true)); } }
+  else if (!G.waveSpawned) { G.clearT -= dt; if (G.clearT <= 0) spawnWave(); }
   else if (!alive && !G.mobs.length && !G.boss) waveCleared();
+  riftTick(dt); envTick(real); QUESTS.tick(real); STORY.tick(real);
   lead.update(dt);
   for (const b of G.bench) b.benchTick(dt);
   // auto tag: low life and a healthy partner
@@ -1037,7 +1082,7 @@ function frame(now) {
   for (let i = G.mobs.length - 1; i >= 0; i--) { catchUp(G.mobs[i], lead); if (G.mobs[i].update(dt, lead)) { G.mobs[i].dispose(); G.mobs.splice(i, 1); } }
   if (G.boss) catchUp(G.boss, lead);
   if (G.boss && G.boss.update(dt, lead)) { G.boss.dispose(); G.boss = null; UI.showBoss(false); }
-  updateFx(dt);
+  updateFx(dt); updateSheetFx(dt); clearPlats(false);
   if (G.comboT > 0) { G.comboT -= real; if (G.comboT <= 0) G.combo = 0; }
   const want = lead.x - 500;
   G.camX += (want - G.camX) * Math.min(1, real * 4);
@@ -1068,6 +1113,8 @@ async function boot() {
   lt.textContent = 'scouting the brigands…';
   await Promise.all(Object.keys(ENEMY_DEFS).map(k => loadSprite('e_' + k).then(() => SPINE_MOBS.push(k)).catch(() => null)));
   await loadSprite('e_batta');
+  await loadSprite('e_dracula').catch(() => null);
+  await loadSheetFx();
   buildMobTextures();
   await ITEM_ART.load();
   await loadHeroArt();
@@ -1083,6 +1130,7 @@ async function boot() {
   G.camX = G.hero.x - 500;
   G.clearT = 1.4;
   UI.init();
+  QUESTS.init(); STORY.init();
   document.getElementById('loading').remove();
   last = performance.now();
   requestAnimationFrame(frame);

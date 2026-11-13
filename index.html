@@ -645,6 +645,84 @@ button:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
 @keyframes cutSway{0%{scale:1.08}100%{scale:1;translate:-12px -4px}}
 .cut .t{top:70px}.cut .s{top:108px}
 @media (prefers-reduced-motion: reduce){.doll .fig,.doll::after{animation:none}}
+
+/* ---------- environment label, quests, banner, QTE, rift, dialogue ---------- */
+#tracker .envl{margin-top:3px;font-weight:900;font-size:12px;color:#d8f4ff;text-shadow:var(--stroke)}
+#questHud{position:absolute;right:10px;top:188px;width:206px;padding:6px 8px 8px;pointer-events:auto;cursor:pointer;text-align:right;background:linear-gradient(270deg,rgba(6,30,40,.78),rgba(6,30,40,0));border:0;border-right:3px solid var(--teal-hi);border-radius:0}
+#questHud .qh{font-weight:900;font-size:12px;letter-spacing:.08em;color:var(--gold);text-shadow:var(--stroke);text-transform:uppercase}
+#questHud .qh span{color:#fff}
+.qi{position:relative;padding:3px 0 5px;transition:opacity .5s,transform .5s}
+.qi b{display:block;font-weight:800;font-size:12px;color:#fff;text-shadow:var(--stroke);line-height:1.2}
+.qi span{font-weight:900;font-size:12px;color:var(--teal-hi);text-shadow:var(--stroke);font-variant-numeric:tabular-nums}
+.qi i{position:absolute;right:0;bottom:1px;height:2px;background:linear-gradient(90deg,transparent,var(--teal-hi));border-radius:1px}
+.qi.done b,.qi.done span{color:var(--gold)}
+.qi.done{animation:qdone 1.5s ease forwards}
+@keyframes qdone{0%{transform:scale(1)}15%{transform:scale(1.08)}70%{opacity:1;transform:none}100%{opacity:0;transform:translateX(30px)}}
+#fbanner{position:absolute;left:50%;top:270px;width:290px;transform:translateX(-50%) scale(.2);opacity:0;image-rendering:pixelated;pointer-events:none;filter:drop-shadow(0 3px 0 rgba(0,0,0,.5))}
+#fbanner[src*="opening"]{width:400px}
+#fbanner.on{animation:fban 1.9s steps(24) forwards}
+@keyframes fban{0%{opacity:0;transform:translateX(-50%) scale(.2)}12%{opacity:1;transform:translateX(-50%) scale(1.08)}20%{transform:translateX(-50%) scale(1)}80%{opacity:1;transform:translateX(-50%) scale(1)}100%{opacity:0;transform:translateX(-50%) scale(1.3)}}
+#qte{position:absolute;left:50%;top:420px;width:250px;height:76px;margin-left:-125px;pointer-events:auto;cursor:pointer;border-radius:999px;border:3px solid #ffd8ff;
+  background:linear-gradient(180deg,#f9a8ff,#b048e0 45%,#6a1aa8 55%,#8a30c8);box-shadow:0 0 0 3px #2a0640,0 0 30px rgba(220,90,255,.9),inset 0 2px 0 rgba(255,255,255,.6);display:flex;align-items:center;gap:10px;padding:0 14px 0 10px;color:#fff}
+#qte.pop{animation:qpop .35s cubic-bezier(.3,1.6,.5,1),qpulse .7s .35s ease-in-out infinite}
+@keyframes qpop{from{transform:scale(.2);opacity:0}to{transform:none;opacity:1}}
+@keyframes qpulse{50%{box-shadow:0 0 0 3px #2a0640,0 0 46px rgba(255,120,255,1),inset 0 2px 0 rgba(255,255,255,.6)}}
+#qte .ring{width:52px;height:52px;flex:none;border-radius:50%;background:conic-gradient(#fff calc(var(--k,1)*360deg),rgba(255,255,255,.18) 0);-webkit-mask:radial-gradient(circle,transparent 15px,#000 16px);mask:radial-gradient(circle,transparent 15px,#000 16px)}
+#qte .qx{display:flex;flex-direction:column;align-items:flex-start}
+#qte b{font-weight:900;font-size:18px;font-style:italic;text-shadow:var(--stroke)}
+#qte small{font-weight:900;font-size:11px;letter-spacing:.2em;color:#ffe9ff;text-shadow:var(--stroke)}
+#rift{position:absolute;inset:0;pointer-events:none;opacity:0;background:
+  repeating-linear-gradient(0deg,rgba(255,40,90,.25) 0 3px,transparent 3px 11px),radial-gradient(circle at 50% 45%,#fff 0,#e070ff 18%,#30063a 55%,#000 80%)}
+#rift.on{animation:riftfx 1.15s ease-in-out}
+@keyframes riftfx{0%{opacity:0;transform:scale(1.4) skewX(0)}20%{opacity:1;transform:scale(1) skewX(-6deg)}35%{transform:skewX(8deg)}50%{opacity:1;transform:none;filter:brightness(.2)}100%{opacity:0;filter:brightness(1)}}
+#questModal{position:absolute;inset:0;z-index:5;pointer-events:auto;background:rgba(2,14,20,.7);display:flex;align-items:center;justify-content:center;padding:20px}
+#questModal .qm{width:100%;max-height:78%;display:flex;flex-direction:column;padding:12px 12px 14px;border-radius:14px!important}
+.qm-head{display:flex;align-items:center;justify-content:space-between;padding-bottom:8px;border-bottom:1px solid #2c7f93;margin-bottom:8px}
+.qm-head b{font-family:var(--f-head);font-weight:900;font-size:22px;color:#fff;text-shadow:var(--stroke)}
+#qmClose{width:32px;height:32px;padding:0;border-radius:999px;border:2px solid #07303d;background:var(--btn);color:#fff;font-weight:900;cursor:pointer}
+#qmBody{overflow:auto;display:flex;flex-direction:column;gap:8px}
+.qrow{padding:9px 10px;border-radius:8px 20px 20px 8px;background:linear-gradient(90deg,#0b2e3c,#16485a);border:1px solid #4fb3c6}
+.qrow.done{border-color:var(--gold);box-shadow:0 0 12px rgba(246,215,124,.4)}
+.qt b{display:block;font-weight:900;font-size:15px;color:#fff;text-shadow:var(--stroke)}
+.qt small{font-weight:800;font-size:12px;color:var(--dust)}
+.qbar{position:relative;height:16px;margin:6px 0;border-radius:8px;background:#041219;border:1px solid #02121a;overflow:hidden}
+.qbar i{position:absolute;left:0;top:0;bottom:0;background:linear-gradient(180deg,#d6fdff,#58e0f0 45%,#1aa9c4)}
+.qbar span{position:absolute;inset:0;text-align:center;font-weight:900;font-size:11px;line-height:14px;color:#fff;text-shadow:var(--stroke)}
+.qrw{display:flex;gap:5px;flex-wrap:wrap}
+.chip{display:inline-flex;align-items:center;gap:4px;height:20px;padding:0 8px;border-radius:999px;background:#0b3140;border:1px solid #7fe0ef;font-weight:900;font-size:11px;color:#fff}
+.chip.gem{color:#f2dcff}.chip .ic{width:9px;height:9px}
+.chip.rare{border-color:var(--q-rare);color:var(--q-rare)}.chip.magic{border-color:var(--q-magic);color:#b9c8ff}
+.qfoot{text-align:center;font-weight:800;font-size:12px;color:var(--dust);padding-top:4px}.qfoot b{color:var(--gold)}
+/* FE: Three Houses dialogue box, re-coloured to the blue palette */
+#dlg{position:absolute;left:8px;right:8px;top:104px;height:168px;z-index:2;pointer-events:auto;cursor:pointer;opacity:0;transform:translateY(-10px);transition:opacity .3s,transform .3s;--who:#7fe0ef}
+#dlg.on{opacity:1;transform:none}
+#ui.dlgon #questHud,#ui.dlgon #lootFeed{opacity:.15;transition:opacity .3s}
+.dlg-body{position:absolute;left:4px;right:84px;top:40px;bottom:6px;border-radius:4px;
+  background:radial-gradient(120% 140% at 30% 40%,#f6fbfc 0,#e3eff3 55%,#c9dde5 100%);
+  border:3px solid #24586c;box-shadow:inset 0 0 0 2px #8fc4d4,inset 0 0 24px rgba(36,88,108,.25),0 6px 16px rgba(0,0,0,.45);padding:14px 74px 10px 56px}
+.dlg-orn{position:absolute;left:-3px;top:-3px;bottom:-3px;width:44px;border-radius:4px 0 0 4px;
+  background:linear-gradient(90deg,#1b4a5c,#2d6f86 60%,#24586c);clip-path:polygon(0 0,100% 0,62% 18%,62% 82%,100% 100%,0 100%)}
+.dlg-orn::after{content:'';position:absolute;left:8px;top:50%;width:18px;height:18px;margin-top:-9px;transform:rotate(45deg);border:2px solid #f6d77c;box-shadow:0 0 0 3px #1b4a5c,0 0 0 4px #8fc4d4}
+#dlgText{margin:0;font-weight:800;font-size:15px;line-height:1.45;color:#10303c;min-height:3em}
+.dlg-next{position:absolute;right:12px;bottom:8px;width:14px;height:16px;background:linear-gradient(180deg,#7fe6ef,#2aa6bf);clip-path:polygon(0 0,100% 0,50% 100%);animation:dnext .8s ease-in-out infinite;opacity:0}
+#dlg:not(.talk) .dlg-next{opacity:1}
+@keyframes dnext{50%{transform:translateY(4px)}}
+.dlg-name{position:absolute;left:0;top:10px;height:34px;min-width:190px;padding:0 34px;display:flex;align-items:center;justify-content:center;
+  background:linear-gradient(180deg,#2a6a82,#123c4c);clip-path:polygon(14px 0,calc(100% - 14px) 0,100% 50%,calc(100% - 14px) 100%,14px 100%,0 50%);
+  box-shadow:inset 0 0 0 2px #8fc4d4}
+.dlg-name::before{content:'';position:absolute;inset:3px 10px;border-top:1px solid rgba(246,215,124,.7);border-bottom:1px solid rgba(246,215,124,.7)}
+#dlgName{font-family:var(--f-head);font-weight:900;font-size:16px;color:#fff;text-shadow:var(--stroke)}
+.dlg-port{position:absolute;right:6px;top:-4px;width:150px;height:150px}
+.dlg-port .dp-in{position:absolute;inset:14px;transform:rotate(45deg);overflow:hidden;border:4px solid #24586c;box-shadow:0 0 0 2px #f6d77c,0 0 0 5px #123c4c,0 0 18px var(--who);
+  background:radial-gradient(circle at 50% 30%,#3f8aa2,#123c4c 80%)}
+#dlgPort{position:absolute;left:50%;top:50%;width:150%;height:150%;max-width:none;transform:translate(-50%,-46%) rotate(-45deg);transform-origin:50% 50%;animation:pbreathe 3.2s ease-in-out infinite}
+#dlg.talk #dlgPort{animation:pbreathe 3.2s ease-in-out infinite,ptalk .18s steps(2) infinite}
+#dlg.swap .dp-in{animation:pswap .35s ease-out}
+@keyframes pbreathe{0%,100%{scale:1;translate:0 0}50%{scale:1.035;translate:0 -2px}}
+@keyframes ptalk{50%{translate:0 -1.5px}}
+@keyframes pswap{from{transform:rotate(45deg) scale(.6);opacity:0}to{transform:rotate(45deg) scale(1);opacity:1}}
+#sheet{background-image:linear-gradient(180deg,rgba(9,40,54,.94),rgba(4,20,28,.97)),url(sprites/prep_bg.png)!important;background-size:auto,1028px 320px;background-blend-mode:normal}
+#loading{background:linear-gradient(180deg,rgba(4,19,27,.6),rgba(4,19,27,.9)),url(sprites/prep_bg.png) center/cover!important;image-rendering:pixelated}
 /* spread the plate rows over the full 352px panel */
 #panel{gap:11px}
 .plate{margin-top:14px;height:42px}
@@ -666,6 +744,7 @@ button:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
     <div id="tracker">
       <div class="zone" id="floorName">Sacae Plains</div>
       <div class="sub">Floor <b id="floorN">1</b> · <span id="diffSub">Normal</span></div>
+      <div class="envl" id="envTxt">☀ Day</div>
       <div class="obj" id="objTxt">Rout the enemy</div>
       <div id="waves"></div>
     </div>
@@ -683,6 +762,14 @@ button:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
     </div>
     <div id="combo"><b id="comboN">0</b><span>HITS</span></div>
     <div id="lootFeed" aria-live="polite"></div>
+    <button type="button" id="questHud" aria-label="Open quest log"><div class="qh">Quests <span>›</span></div><div class="ql"></div></button>
+    <img id="fbanner" alt="">
+    <button type="button" id="qte" hidden><span class="ring"></span><span class="qx"><b>ENTER THE RIFT</b><small>TAP NOW</small></span></button>
+    <div id="dlg" hidden>
+      <div class="dlg-body"><div class="dlg-orn"></div><p id="dlgText"></p><span class="dlg-next"></span></div>
+      <div class="dlg-name"><span id="dlgName"></span></div>
+      <div class="dlg-port"><div class="dp-in"><img id="dlgPort" alt=""></div></div>
+    </div>
     <div id="banner"></div>
     <div id="cutin"></div>
     <div id="toast"></div>
@@ -704,6 +791,7 @@ button:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
         <button class="mbtn frame" id="charBtn" type="button" aria-label="Character"><svg viewBox="0 0 24 24"><path d="M12 3c-3 0-5 2.2-5 5.2V12l2 2v3h6v-3l2-2V8.2C17 5.2 15 3 12 3z"/><path d="M9.5 9.5h1.8M12.7 9.5h1.8M12 14v3M8 21h8"/></svg><span>Stats</span><i class="badge" id="charBadge" hidden></i></button>
         <button class="mbtn frame" id="invBtn" type="button" aria-label="Inventory"><svg viewBox="0 0 24 24"><path d="M6 8h12l-1 12H7L6 8z"/><path d="M9 8V6a3 3 0 0 1 6 0v2M9.5 12h5"/></svg><span>Bag</span><i class="badge" id="invBadge" hidden></i></button>
         <button class="mbtn frame" id="skillBtn" type="button" aria-label="Skills"><svg viewBox="0 0 24 24"><path d="M12 3v5M12 8l-5 5M12 8l5 5M7 13v4M17 13v4"/><circle cx="12" cy="3.5" r="1.6"/><circle cx="7" cy="18.5" r="1.6"/><circle cx="17" cy="18.5" r="1.6"/><circle cx="12" cy="8.5" r="1.6"/></svg><span>Skills</span><i class="badge" id="skillBadge" hidden></i></button>
+        <button class="mbtn frame" id="questBtn" type="button" aria-label="Quests"><svg viewBox="0 0 24 24"><path d="M7 3h10a2 2 0 0 1 2 2v14l-3-2-2 2-2-2-2 2-2-2-3 2V5a2 2 0 0 1 2-2z"/><path d="M9 8h6M9 12h6"/></svg><span>Quests</span></button>
         <button class="mbtn frame" id="shopBtn" type="button" aria-label="Shop"><svg viewBox="0 0 24 24"><path d="M12 3l6 6-6 12-6-12 6-6z"/><path d="M6 9h12M12 3v18"/></svg><span>Shop</span></button>
         <div class="togs"><button class="tog" id="sndBtn" type="button">♪ On</button><button class="tog" id="spdBtn" type="button">×1</button><button class="tog on" id="autoBtn" type="button">Auto</button></div>
       </div>
@@ -713,6 +801,8 @@ button:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
       <div id="shBody"></div>
     </div>
     <div id="tip" hidden></div>
+    <div id="questModal" hidden><div class="qm frame"><div class="qm-head"><b>Quest Log</b><button type="button" id="qmClose" aria-label="Close">✕</button></div><div id="qmBody"></div></div></div>
+    <div id="rift"></div>
     <div id="gacha" hidden><div class="gx-title">Reliquary</div><div class="gx-sub" id="gxSub"></div><div class="gx-grid" id="gxGrid"></div><button type="button" class="tbtn" id="gxClose">Collect</button></div>
   </div>
   <div id="loading"><span class="lt">Blazing Vanguard</span><small id="loadTxt">unrolling the map…</small></div>
@@ -726,8 +816,11 @@ button:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
 <script src="ui.js"></script>
 <script src="spritedata.js"></script>
 <script src="sprite.js"></script>
+<script src="fxdata.js"></script>
 <script src="febg.js"></script>
 <script src="audio.js"></script>
+<script src="world.js"></script>
+<script src="story.js"></script>
 <script src="game.js"></script>
 
 </body></html>
