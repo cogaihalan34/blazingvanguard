@@ -1186,7 +1186,7 @@ function frameBody(now) {
 async function boot() {
   layout();
   buildFxTextures();
-  const lt = document.getElementById('ttHint');
+  const lt = document.getElementById('ttHint') || document.getElementById('loadTxt') || { textContent: '' };
   try {
     lt.textContent = 'rallying Lyn · Hector…';
     await Promise.all(PARTY_KEYS.map(k => loadSprite(k)));
@@ -1217,4 +1217,10 @@ async function boot() {
   requestAnimationFrame(frame);
   window.addEventListener('pagehide', () => save(true));
 }
-boot();
+boot().catch(err => {
+  console.error(err);
+  const b = document.getElementById('ttBtn'), t = document.getElementById('ttHint');
+  if (t) t.textContent = 'Load failed: ' + (err && err.message || err) + ' — tap to retry';
+  if (b) b.textContent = 'RETRY';
+  const el = document.getElementById('title'); if (el) el.addEventListener('click', () => location.reload(), { once: true });
+});

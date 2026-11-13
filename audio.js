@@ -11,7 +11,7 @@ const AUDIO = (() => {
   function noise(loop) { if (!noiseBuf) { noiseBuf = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate); const d = noiseBuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; } const s = ctx.createBufferSource(); s.buffer = noiseBuf; s.loop = !!loop; return s; }
 
   /* ---------- music: two looping <audio> streams with crossfade ---------- */
-  const TRACKS = { normal: 'audio/main_heroine.mp3', void: 'audio/dungeon.mp3', title: 'audio/title.mp3' };
+  const TRACKS = { normal: 'audio/main_heroine.mp3', void: 'audio/dungeon.mp3', title: 'audio/title.mp3?v=2' };
   const MUSIC_VOL = { normal: .62, void: .7, title: .75 };
   const tracks = {}; let world = 'title', duck = 1;
   function makeTrack(key) {

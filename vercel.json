@@ -1,6 +1,32 @@
 {
   "cleanUrls": true,
   "headers": [
-    { "source": "/(.*)\\.(js|png|webp)", "headers": [{ "key": "Cache-Control", "value": "public, max-age=3600" }] }
+    {
+      "source": "/(.*)\\.(js|html|mp3)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-cache"
+        }
+      ]
+    },
+    {
+      "source": "/",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-cache"
+        }
+      ]
+    },
+    {
+      "source": "/(.*)\\.(png|webp|jpg|ttf)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=3600"
+        }
+      ]
+    }
   ]
 }
