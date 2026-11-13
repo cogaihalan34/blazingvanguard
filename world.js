@@ -196,6 +196,7 @@ function closePortal(entered) {
   if (!entered) UI.toastSmall('The rift collapsed…');
 }
 function disposeField() {
+  if (CINE.active) CINE.abort();
   for (const m of G.mobs) m.dispose(); G.mobs.length = 0;
   if (G.boss) { G.boss.dispose(); G.boss = null; UI.showBoss(false); }
   clearPlats(true);

@@ -306,11 +306,7 @@ class Hero {
       if (G.autoStat) autoAllocate(this);
       if (G.autoSkill) autoSkill(this);
       UI.toastSmall(`${this.cls.name} reached level ${this.level}${G.autoStat ? '' : ' · +5 stat points'}${G.autoSkill ? '' : ' · +1 skill point'}`);
-      if (G.hero === this) {
-        UI.number(this.x, GROUND + 380, 'LEVEL UP', 'lv');
-        spawnFx({ tex: TX.ring, x: this.x, y: GROUND + 20, sx: 60, sy: 20, sx1: 520, sy1: 150, life: .6, color: 0xffcf6a, ro: 58 });
-        spawnFx({ tex: TX.glow, x: this.x, y: GROUND + 150, sx: 300, sy: 500, sx1: 120, sy1: 700, life: .6, color: 0xffcf6a, a0: .6, ro: 58 });
-      }
+      if (G.hero === this) levelUpFx(this);
       UI.dirtyAll();
     }
   }
@@ -318,7 +314,7 @@ class Hero {
   target() {
     let best = null, bd = 1e9;
     for (const e of allEnemies()) {
-      if (e.dead || e.x > G.camX + VW + 40 || e.x < G.camX - 200) continue;
+      const vb = viewBounds(); if (e.dead || e.x > vb[1] + 40 || e.x < vb[0] - 200) continue;
       const d = Math.abs(e.x - this.x) + (sameLevel(this, e) ? 0 : 380) + (e.x < this.x ? 60 : 0);
       if (d < bd) { bd = d; best = e; }
     }
@@ -376,7 +372,7 @@ class Hero {
     this.view.u.uTint.value.copy(G.ambHero);
     this.flashRed = Math.max(0, this.flashRed - dt * 5);
     this.view.u.uFlash.value = this.flashRed * .55; this.view.u.uFlashCol.value.setRGB(1, .1, .15);
-    this.view.u.uAlpha.value = this.invuln > 0 && this.mode !== 'tagin' ? .6 + .4 * Math.sin(G.time * 40) : 1;
+    this.view.u.uAlpha.value = this.invuln > 0 && this.mode !== 'tagin' && !this.cineStrike ? .6 + .4 * Math.sin(G.time * 40) : 1;
   }
   autoPotion() {
     if (this.potCd > 0) return;
@@ -387,8 +383,8 @@ class Hero {
   }
   think(dt) {
     if (this.cineStrike) return;
-    if (this.limit >= 1 && G.auto && !this.air && this.mode !== 'appear' && this.mode !== 'tagin' && CINE.targets().length && (this.mode !== 'combo' && this.mode !== 'skill' || this.entry.trackTime >= this.nextAt)) { limitBreak(this); return; }
     const tt = this.entry.trackTime;
+    if (this.limit >= 1 && G.auto && !this.dead && this.mode !== 'dead' && this.mode !== 'hurt' && !this.air && this.mode !== 'appear' && this.mode !== 'tagin' && (this.mode !== 'combo' && this.mode !== 'skill' || tt >= this.nextAt) && limitBreak(this)) return;
     if (this.mode === 'dead') {
       this.deathT -= dt;
       if (this.deathT <= 0 && !this.deathDone) {
@@ -1132,13 +1128,22 @@ function frame(now) {
   if (G.comboT > 0) { G.comboT -= real; if (G.comboT <= 0) G.combo = 0; }
   const want = lead.x - 500;
   G.camX += (want - G.camX) * Math.min(1, real * 4);
+  // crowd camera: pull back when a route gets crowded, settle back once it thins out / is cleared
+  const crowd = allEnemies().filter(e => !e.dead).length;
+  if (crowd >= 7) G.crowdOn = true; else if (crowd <= 2 || !G.waveSpawned || G.secret && !G.boss) G.crowdOn = false;
+  const zWant = G.crowdOn ? (G.secret ? .86 : .76) : 1;
+  G.camZoom = (G.camZoom || 1) + (zWant - (G.camZoom || 1)) * Math.min(1, real * (zWant < (G.camZoom || 1) ? 1.4 : 1.1));
   let sx = 0, sy = 0;
   if (G.shakeT > 0) { G.shakeT -= real; sx = rnd(-1, 1) * G.shakeA; sy = rnd(-1, 1) * G.shakeA * .7; G.shakeA *= Math.pow(.02, real); }
+  const cz = G.camZoom || 1;
+  // keep the hero's screen x and the ground line fixed while zooming
+  const ax = G.camX + (500 - VW / 2) * (1 - 1 / cz), ay = (GROUND + 120 - VH / 2) * (1 - 1 / cz);
   if (focus) {
     const k = (zoom - 1) / .2;
-    camera.position.x = G.camX + (focus.x - (G.camX + VW / 2)) * k * .8 + sx; camera.position.y = (focus.y - VH / 2) * k * .6 + sy;
-  } else { camera.position.x = G.camX + sx; camera.position.y = sy; }
-  if (camera.zoom !== zoom) { camera.zoom = zoom; camera.updateProjectionMatrix(); }
+    camera.position.x = ax + (focus.x - (G.camX + VW / 2)) * k * .8 + sx; camera.position.y = ay + (focus.y - VH / 2) * k * .6 + sy;
+  } else { camera.position.x = ax + sx; camera.position.y = ay + sy; }
+  zoom *= cz;
+  if (Math.abs(camera.zoom - zoom) > 1e-4) { camera.zoom = zoom; camera.updateProjectionMatrix(); }
   BG.update(G.camX, dt, G.time);
   WEATHER.update(G.camX, dt, real);
   CUT.update(real);

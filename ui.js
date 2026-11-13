@@ -552,12 +552,13 @@ const UI = {
     setTimeout(() => { el.classList.add('out'); setTimeout(() => el.remove(), 520); }, 3600);
   },
   /* ---------- combat text & feedback ---------- */
-  toUi(x, y) { return [(x - G.camX) / 2, (VH - y) / 2]; },
+  toUi(x, y) { const z = camera.zoom, sx = (x - camera.position.x - VW / 2) * z + VW / 2, sy = (y - camera.position.y - VH / 2) * z + VH / 2; return [sx / 2, (VH - sy) / 2]; },
   number(x, y, txt, cls) {
     const fx = $('fx');
     if (fx.childElementCount > 80) fx.firstElementChild.remove();
     const [ux, uy] = this.toUi(x, y);
-    const el = document.createElement('div'); el.className = 'dmg ' + cls; el.textContent = txt;
+    const el = document.createElement('div'); el.className = 'dmg ' + cls;
+    if ((cls === 'c' || cls === 'cb' || cls === 's') && /^\d+$/.test(txt)) { el.classList.add('tn'); el.innerHTML = talesNum(txt); } else el.textContent = txt;
     el.style.left = ux + 'px'; el.style.top = uy + 'px';
     fx.appendChild(el);
     const big = cls === 'c' || cls === 'cb' ? 1.5 : cls === 's' ? 1.3 : 1.15;
@@ -587,7 +588,7 @@ const UI = {
     const a = el.animate(frames, { duration: 1700, easing: 'cubic-bezier(.4,0,.6,1)' });
     a.onfinish = () => { el.remove(); if (target) { target.classList.remove('ping'); void target.offsetWidth; target.classList.add('ping'); } };
   },
-  comboBump() { const b = $('comboN'); b.textContent = G.combo; b.classList.remove('bump'); void b.offsetWidth; b.classList.add('bump'); },
+  comboBump() { const b = $('comboN'); b.innerHTML = talesNum(G.combo); b.classList.remove('bump'); void b.offsetWidth; b.classList.add('bump'); },
   coinFly(x, y, value) {
     const fx = $('fx'); const [ux, uy] = this.toUi(x, y);
     const t = $('goldTxt').getBoundingClientRect(), u = uiEl.getBoundingClientRect(), s = 540 / u.width;
@@ -766,3 +767,6 @@ function buyBundle(k) {
   UI.toastSmall(`${b.n} opened${sold ? ` · ${sold} sold, bag full` : ''}`);
   UI.dirtyAll(); save(true);
 }
+
+/* Tales of Eternia–style battle numerals (sprites/font/d0..d9.png) */
+function talesNum(n) { return String(n).split('').map(d => `<img src="sprites/font/d${d}.png" alt="${d}">`).join(''); }

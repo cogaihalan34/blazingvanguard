@@ -115,18 +115,41 @@ const AUDIO = (() => {
   function whoosh(t, len = .18, f0 = 900, f1 = 3200, vol = .22) { const s = noise(), f = ctx.createBiquadFilter(), g = ctx.createGain(); f.type = 'bandpass'; f.Q.value = 1.4; f.frequency.setValueAtTime(f0, t); f.frequency.exponentialRampToValueAtTime(f1, t + len); g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol, t + len * .35); g.gain.linearRampToValueAtTime(0, t + len); s.connect(f); f.connect(g); g.connect(sfxBus); s.start(t); s.stop(t + len + .02); }
   function thump(t, f = 120, vol = .35, len = .16, dest) { const o = ctx.createOscillator(), g = ctx.createGain(); o.type = 'sine'; o.frequency.setValueAtTime(f * 2.2, t); o.frequency.exponentialRampToValueAtTime(f * .6, t + len); g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(.001, t + len); o.connect(g); g.connect(dest || sfxBus); o.start(t); o.stop(t + len + .02); }
   function crack(t, vol = .2, len = .07, hp = 1800) { const s = noise(), f = ctx.createBiquadFilter(), g = ctx.createGain(); f.type = 'highpass'; f.frequency.value = hp; g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(.001, t + len); s.connect(f); f.connect(g); g.connect(sfxBus); s.start(t); s.stop(t + len + .02); }
+  /* metallic FM bell: inharmonic partial with a fast-decaying index, gives the bright "shing" of fantasy hits */
+  function bell(t, f, vol = .1, dec = .45, ratio = 1.414, idx = 3, dest) {
+    const c = ctx.createOscillator(), m = ctx.createOscillator(), mg = ctx.createGain(), g = ctx.createGain();
+    c.frequency.value = f; m.frequency.value = f * ratio;
+    mg.gain.setValueAtTime(f * idx, t); mg.gain.exponentialRampToValueAtTime(f * .05, t + dec);
+    m.connect(mg); mg.connect(c.frequency);
+    g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol, t + .003); g.gain.exponentialRampToValueAtTime(.0005, t + dec);
+    c.connect(g); g.connect(dest || sfxBus); const w = ctx.createGain(); w.gain.value = .35; g.connect(w); w.connect(verb);
+    c.start(t); m.start(t); c.stop(t + dec + .05); m.stop(t + dec + .05);
+  }
+  /* very short bright transient: the "đanh" crack at the front of every impact */
+  function snap(t, vol = .3, hp = 2600, len = .035) {
+    const s = noise(), f = ctx.createBiquadFilter(), p = ctx.createBiquadFilter(), g = ctx.createGain();
+    f.type = 'highpass'; f.frequency.value = hp; p.type = 'peaking'; p.frequency.value = 5200; p.gain.value = 10; p.Q.value = 1.2;
+    g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(.001, t + len);
+    s.connect(f); f.connect(p); p.connect(g); g.connect(sfxBus); s.start(t); s.stop(t + len + .01);
+  }
+  function sparkle(t, n = 5, base = 2600, vol = .035) { for (let i = 0; i < n; i++) bell(t + i * .035 + Math.random() * .02, base * (1 + Math.random() * .9), vol, .3, 2.76, 1.2); }
   const can = () => ctx && started && !muted;
   const SFX = {
-    swing(heavy) { if (!can() || !gate('sw', 70)) return; whoosh(ctx.currentTime, heavy ? .26 : .16, heavy ? 500 : 900, heavy ? 2400 : 3600, heavy ? .26 : .18); },
-    hit(heavy, crit) { if (!can() || !gate('hit', 45)) return; const t = ctx.currentTime; crack(t, heavy ? .26 : .18); thump(t, heavy ? 90 : 140, heavy ? .4 : .26); if (crit && gate('crit', 120)) { blip(1760, 2640, t, .18, 'square', .05); blip(2637, 0, t + .05, .25, 'triangle', .06); } },
-    kill() { if (!can() || !gate('kill', 80)) return; const t = ctx.currentTime; blip(520, 90, t, .28, 'square', .05); crack(t + .02, .12, .2, 600); },
-    coin() { if (!can() || !gate('coin', 60)) return; const t = ctx.currentTime; blip(988, 0, t, .07, 'square', .04); blip(1319, 0, t + .065, .2, 'square', .04); },
+    swing(heavy) { if (!can() || !gate('sw', 70)) return; const t = ctx.currentTime; whoosh(t, heavy ? .2 : .12, heavy ? 1400 : 2400, heavy ? 6200 : 8000, heavy ? .3 : .22); if (heavy) bell(t + .05, 1800, .025, .2, 3.1, 1); },
+    hit(heavy, crit) {
+      if (!can() || !gate('hit', 40)) return; const t = ctx.currentTime;
+      snap(t, heavy ? .42 : .3); bell(t, heavy ? 1250 : 1650 + Math.random() * 300, heavy ? .07 : .05, heavy ? .35 : .22, 1.414, heavy ? 4 : 3);
+      thump(t, heavy ? 85 : 130, heavy ? .42 : .24, heavy ? .18 : .1);
+      if (crit && gate('crit', 110)) { bell(t + .01, 2637, .09, .55, 2.0, 2); bell(t + .06, 3520, .06, .5, 2.0, 1.5); sparkle(t + .05, 4, 3200, .03); }
+    },
+    kill() { if (!can() || !gate('kill', 80)) return; const t = ctx.currentTime; snap(t, .25, 1800, .06); bell(t, 880, .05, .5, 1.5, 5); whoosh(t + .02, .3, 3000, 600, .12); },
+    coin() { if (!can() || !gate('coin', 60)) return; const t = ctx.currentTime; bell(t, 1976, .045, .12, 3.0, .8); bell(t + .06, 2637, .05, .35, 3.0, .8); },
     hurt() { if (!can() || !gate('hurt', 120)) return; const t = ctx.currentTime; thump(t, 70, .45, .22); crack(t, .14, .1, 900); },
-    block() { if (!can() || !gate('blk', 90)) return; const t = ctx.currentTime; blip(1400, 1300, t, .25, 'triangle', .08); blip(2100, 1900, t, .2, 'sine', .05); crack(t, .1, .04, 3000); },
-    cast(ult) { if (!can()) return; const t = ctx.currentTime; const notes = ult ? ['A4', 'C5', 'E5', 'A5', 'C6', 'E6'] : ['E5', 'A5', 'B5']; notes.forEach((n, i) => blip(N(n), 0, t + i * .045, ult ? .9 : .4, 'triangle', ult ? .07 : .05)); whoosh(t, ult ? .5 : .28, 300, 5000, ult ? .3 : .18); if (ult) thump(t + .02, 60, .5, .6); },
+    block() { if (!can() || !gate('blk', 90)) return; const t = ctx.currentTime; snap(t, .35, 3000); bell(t, 2093, .1, .6, 1.0, .6); bell(t, 3136, .05, .45, 1.0, .4); },
+    cast(ult) { if (!can()) return; const t = ctx.currentTime; const notes = ult ? ['A4', 'E5', 'A5', 'C#6', 'E6', 'A6'] : ['E5', 'B5', 'E6']; notes.forEach((n, i) => bell(t + i * .04, N(n), ult ? .07 : .05, ult ? 1.1 : .5, 2.0, 1.5)); sparkle(t + .1, ult ? 9 : 4, 2800, .03); whoosh(t, ult ? .5 : .25, 600, 9000, ult ? .3 : .18); if (ult) thump(t + .02, 55, .55, .7); },
     potion() { if (!can()) return; const t = ctx.currentTime; for (let i = 0; i < 4; i++) blip(500 + i * 180 + Math.random() * 80, 900 + i * 200, t + i * .05, .08, 'sine', .07); },
     tag() { if (!can()) return; const t = ctx.currentTime; whoosh(t, .3, 400, 4000, .22); blip(N('E5'), 0, t + .1, .3, 'triangle', .07); blip(N('A5'), 0, t + .18, .45, 'triangle', .07); },
-    levelUp() { if (!can()) return; const t = ctx.currentTime; [['C5', 0], ['E5', .1], ['G5', .2], ['C6', .3], ['G5', .45], ['C6', .55]].forEach(([n, d], i) => blip(N(n), 0, t + d, i === 5 ? .7 : .14, 'square', .05)); [['C4', 0], ['G4', .3], ['C5', .55]].forEach(([n, d]) => blip(N(n), 0, t + d, .5, 'triangle', .08)); },
+    levelUp() { if (!can()) return; const t = ctx.currentTime; [['C5', 0], ['E5', .09], ['G5', .18], ['C6', .27], ['E6', .4], ['G6', .5], ['C7', .62]].forEach(([n, d], i) => bell(t + d, N(n), i > 4 ? .08 : .06, i === 6 ? 1.6 : .5, 2.0, 1.2)); [['C4', 0], ['G4', .27], ['C5', .62]].forEach(([n, d]) => blip(N(n), 0, t + d, .6, 'triangle', .08)); sparkle(t + .62, 10, 3000, .03); },
     loot(q) { if (!can() || !gate('loot', 150)) return; const t = ctx.currentTime; const seq = q === 'unique' || q === 'set' ? ['E6', 'G6', 'B6', 'E7'] : ['B5', 'E6']; seq.forEach((n, i) => blip(N(n), 0, t + i * .06, .35, 'sine', .05)); },
     boss() { if (!can()) return; const t = ctx.currentTime; thump(t, 40, .6, .9); thump(t + .35, 40, .5, .9); thump(t + .7, 60, .6, 1); blip(N('A3'), N('G#3'), t, 1.2, 'sawtooth', .04); },
     text() { if (!can() || !gate('txt', 55)) return; blip(rnd(900, 1100), 0, ctx.currentTime, .03, 'square', .012); },
@@ -157,7 +180,7 @@ const AUDIO = (() => {
   };
   /* Lyn: lower than a girlish register, measured and firm. Hector: very low pitch, slower, plus a synthesized growl under the line. */
   const VOICE = {
-    lyn: { pitch: 1.08, rate: .98, prefer: /Nanami|Mayu|Aoi|Haruka|Ayumi|Kyoko|Sayaka|Google 日本語|Female/i },
+    lyn: { pitch: 1.22, rate: 1.06, prefer: /Nanami|Mayu|Aoi|Haruka|Ayumi|Kyoko|Sayaka|Google 日本語|Female/i },
     hector: { pitch: .32, rate: .84, prefer: /Keita|Naoki|Daichi|Ichiro|Otoya|Hattori|Male/i, growl: true },
   };
   let voices = [], lastVo = 0;

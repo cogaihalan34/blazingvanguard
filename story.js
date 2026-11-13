@@ -222,6 +222,7 @@ Object.assign(UI, {
     const k = Math.min(1, h.limit || 0), key = (k * 100 | 0) + (h.key);
     if (!force && key === this._lk) return; this._lk = key;
     const b = $('limitBtn'); b.style.setProperty('--fill', k.toFixed(3));
+    if (b.dataset.who !== h.key) { b.dataset.who = h.key; $('limitIcon').src = 'sprites/crest_' + h.key + '.png'; b.classList.toggle('hector', h.key === 'hector'); }
     b.classList.toggle('ready', k >= 1); b.setAttribute('aria-label', k >= 1 ? 'Limit Break ready' : `Limit ${Math.round(k * 100)}%`);
     $('limitPct').textContent = k >= 1 ? 'READY' : Math.floor(k * 100) + '%';
   },

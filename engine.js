@@ -519,7 +519,7 @@ class Layer {
   constructor(canvasEl, worldW, worldH, yBottom, p, ro, opts = {}) {
     this.tex = texFrom(canvasEl); this.tex.generateMipmaps = true; this.tex.minFilter = THREE.LinearMipmapLinearFilter; this.w = worldW; this.p = p;
     this.group = new THREE.Group(); this.copies = [];
-    const n = Math.ceil(VW / worldW) + 2;
+    const n = Math.ceil(VW * 1.5 / worldW) + 3;
     const geo = new THREE.PlaneGeometry(worldW, worldH); geo.translate(worldW / 2, worldH / 2, 0);
     this.mat = new THREE.MeshBasicMaterial({ map: this.tex, transparent: true, depthTest: false, depthWrite: false, opacity: opts.opacity ?? 1,
       blending: opts.additive ? THREE.AdditiveBlending : THREE.NormalBlending });
@@ -533,7 +533,7 @@ class Layer {
   update(camX, dt) {
     this.t += dt * this.drift * (this.drift && typeof G !== 'undefined' ? 1 + Math.abs(G.wind || 0) / 120 : 1);
     const s = camX * this.p + this.t; const off = ((s % this.w) + this.w) % this.w;
-    this.group.position.x = camX - off;
+    this.group.position.x = camX - off - this.w;
   }
 }
 
@@ -582,9 +582,9 @@ const BG = {
   },
   update(camX, dt, time) {
     this.sky.position.set(camX + VW / 2, GROUND - 200 + (VH - GROUND + 200) / 2, 0);
-    if (this.layersList) this.sky.scale.set(VW + 400, VH - GROUND + 400, 1);
+    if (this.layersList) this.sky.scale.set(VW * 1.6 + 400, (VH - GROUND) * 1.6 + 400, 1);
     for (const L of (this.layersList || [this.clouds, this.castle, this.nave, this.pillars, this.floor, this.fog])) L.update(camX, dt);
-    if (this.under) { this.under.position.set(camX + VW / 2, GROUND - 400, 0); this.under.scale.set(VW + 400, 800, 1); }
+    if (this.under) { this.under.position.set(camX + VW / 2, GROUND - 400, 0); this.under.scale.set(VW * 1.6 + 400, 800, 1); }
     for (let i = 0; i < this.flames.length; i++) {
       const f = this.flames[i]; const k = .75 + Math.sin(time * 13 + i * 1.7) * .12 + Math.sin(time * 31 + i) * .08;
       f.material.opacity = k; if (!f.userData.s) f.userData.s = [f.scale.x === 1 ? 80 : f.scale.x, f.scale.y === 1 ? 110 : f.scale.y]; f.scale.set(f.userData.s[0] * k, f.userData.s[1] * k, 1);

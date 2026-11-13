@@ -90,7 +90,7 @@ class SpriteView {
     this.place();
   }
   place() {
-    const f = this.anim.f[this.fi], [, , w, h, ax, ay] = f.r, s = this.asset.scale;
+    const f = this.anim.f[this.fi], [, , w, h, ax, ay] = f.r, s = this.asset.scale * (f.r[6] || 1);
     const sx = this.sk.scaleX * s * this.asset.flip, sy = this.sk.scaleY * s;
     const bob = this.anim.bob ? Math.abs(Math.sin(this.t * 9)) * s * 1.6 : 0;
     this.mesh.scale.set(w * sx, h * sy, 1);
@@ -99,7 +99,7 @@ class SpriteView {
   activeBoxes() {
     const f = this.anim.f[this.fi];
     if (!f || f.hit === undefined) return [];
-    const [, , w, h, ax] = f.r, s = this.asset.scale, dir = Math.sign(this.sk.scaleX) || 1, k = Math.abs(this.sk.scaleX) * s;
+    const [, , w, h, ax] = f.r, s = this.asset.scale * (f.r[6] || 1), dir = Math.sign(this.sk.scaleX) || 1, k = Math.abs(this.sk.scaleX) * s;
     const reach = Math.max((this.asset.flip < 0 ? ax : w - ax) * k, this.asset.reach);
     const slot = this.slots[f.hit] || (this.slots[f.hit] = { win: f.hit });
     const key = this.entry.id + ':' + f.hit;
@@ -137,8 +137,13 @@ function artFace(key, size, bg) {
 /* ---------- GBA spell animations (Fire Emblem battle FX), additive, frame-stepped ---------- */
 const SFX_FS = `uniform sampler2D map; uniform float uAlpha; uniform vec3 uCol; varying vec2 vUv;
 void main(){ vec3 c = texture2D(map, vUv).rgb * uCol * uAlpha; gl_FragColor = vec4(c, 1.0); }`;
+/* opaque full-screen summon scenes: normal blending, soft fade at the top and bottom of the frame */
+const SFX_VS2 = `uniform vec4 uRect; varying vec2 vUv; varying vec2 vL; void main(){ vL = uv; vUv = uRect.xy + uv * uRect.zw; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`;
+const SFX_FS2 = `uniform sampler2D map; uniform float uAlpha; uniform vec3 uCol; varying vec2 vUv; varying vec2 vL;
+void main(){ vec3 c = texture2D(map, vUv).rgb * uCol; float e = smoothstep(0.0, .14, vL.y) * smoothstep(1.0, .86, vL.y); gl_FragColor = vec4(c, uAlpha * e); }`;
 const FXT = {}, SHEET_FX = [];
 async function loadSheetFx() {
+  loadImage('sprites/trident.png').then(img => { const t = new THREE.Texture(img); t.magFilter = THREE.NearestFilter; t.minFilter = THREE.NearestFilter; t.generateMipmaps = false; t.needsUpdate = true; FXT.tridentW = t; }).catch(() => null);
   await Promise.all(Object.entries(FX_DATA).map(([k, d]) => loadImage(d.png).then(img => {
     const t = new THREE.Texture(img); t.magFilter = THREE.NearestFilter; t.minFilter = THREE.NearestFilter; t.generateMipmaps = false; t.needsUpdate = true; FXT[k] = t;
   }).catch(() => null)));
@@ -147,8 +152,10 @@ async function loadSheetFx() {
 function sheetFx(name, x, y, o = {}) {
   const D = FX_DATA[name]; if (!D || !FXT[name]) return null;
   const u = { map: { value: FXT[name] }, uRect: { value: new THREE.Vector4() }, uAlpha: { value: o.alpha ?? 1 }, uCol: { value: new THREE.Color(o.color ?? 0xffffff) } };
-  const m = new THREE.Mesh(fxGeo, new THREE.ShaderMaterial({ uniforms: u, vertexShader: SPR_VS, fragmentShader: SFX_FS, transparent: true, depthTest: false, depthWrite: false,
-    blending: THREE.CustomBlending, blendSrc: THREE.OneFactor, blendDst: THREE.OneFactor }));
+  const m = new THREE.Mesh(fxGeo, D.opaque
+    ? new THREE.ShaderMaterial({ uniforms: u, vertexShader: SFX_VS2, fragmentShader: SFX_FS2, transparent: true, depthTest: false, depthWrite: false })
+    : new THREE.ShaderMaterial({ uniforms: u, vertexShader: SPR_VS, fragmentShader: SFX_FS, transparent: true, depthTest: false, depthWrite: false,
+      blending: THREE.CustomBlending, blendSrc: THREE.OneFactor, blendDst: THREE.OneFactor }));
   m.renderOrder = o.ro ?? 63; m.frustumCulled = false; scene.add(m);
   const f = Object.assign({ m, u, D, name, x, y, t: 0, fi: -1, scale: 4.5, speed: 1, fired: {} }, o);
   f.sx = o.sx ?? f.scale; f.sy = o.sy ?? f.scale;
@@ -166,11 +173,16 @@ function stepSheetFx(f, dt) {
     f.fi = i; const c = i % D.cols, r = Math.floor(i / D.cols);
     f.u.uRect.value.set(c * D.w / D.W, 1 - (r + 1) * D.h / D.H, D.w / D.W, D.h / D.H);
   }
-  if (f.fade) f.u.uAlpha.value = (f.alpha ?? 1) * Math.min(1, (life - f.t) / f.fade);
-  const w = D.w * f.sx, h = D.h * f.sy;
-  if (f.screen) f.m.position.set(G.camX + VW / 2 + (f.dx || 0), GROUND + (f.dy ?? 420), 0);
+  if (f.fade || f.fadeIn) f.u.uAlpha.value = (f.alpha ?? 1) * (f.fade ? Math.min(1, (life - f.t) / f.fade) : 1) * (f.fadeIn ? Math.min(1, f.t / f.fadeIn) : 1);
+  const fit = f.fit ? (VW / camera.zoom) / D.w * f.fit : 0;
+  const w = D.w * (fit || f.sx), h = D.h * (fit || f.sy);
+  if (f.screen) { const vc = viewCenter(); f.m.position.set(vc[0] + (f.dx || 0), (f.dy === undefined ? vc[1] : GROUND + f.dy), 0); }
   else f.m.position.set(f.x, f.y + h / 2, 0);
   f.m.scale.set(w * (f.flip ? -1 : 1), h, 1);
   return true;
 }
 function updateSheetFx(dt) { for (let i = SHEET_FX.length - 1; i >= 0; i--) if (!stepSheetFx(SHEET_FX[i], dt)) SHEET_FX.splice(i, 1); }
+
+/* centre of what the camera currently shows, in world units (accounts for crowd zoom) */
+function viewCenter() { return [camera.position.x + VW / 2, camera.position.y + VH / 2]; }
+function viewBounds() { const z = camera.zoom || 1, c = camera.position.x + VW / 2; return [c - VW / (2 * z), c + VW / (2 * z)]; }

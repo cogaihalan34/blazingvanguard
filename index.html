@@ -767,7 +767,6 @@ button:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
 @keyframes cnflash{0%{opacity:.95}100%{opacity:0}}
 
 /* ---------- Limit Break button (triangle, fills bottom-up, blue flame when ready) ---------- */
-#limitBtn{position:absolute;left:12px;bottom:358px;width:74px;height:70px;padding:0;border:0;background:none;pointer-events:auto;cursor:pointer;--fill:0}
 #limitBtn .lb-tri{position:absolute;inset:0 0 6px;clip-path:polygon(50% 0,100% 100%,0 100%);background:#f6d77c}
 #limitBtn .lb-tri::before{content:'';position:absolute;inset:0;clip-path:polygon(50% 7%,94% 96%,6% 96%);background:linear-gradient(180deg,#0b3140,#041219)}
 #limitBtn .lb-fill{position:absolute;left:0;right:0;bottom:0;height:calc(var(--fill)*100%);clip-path:polygon(50% 7%,94% 96%,6% 96%);
@@ -784,11 +783,66 @@ button:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
 #limitBtn.ready .lb-tri img{opacity:1}
 #limitBtn.ready .lb-flame{opacity:1;animation:lbflame .22s steps(2) infinite}
 #limitBtn.ready .lb-pct{color:#bff6ff;font-size:12px;letter-spacing:.08em}
-#limitBtn.ready{filter:drop-shadow(0 0 10px #4ab8ff) drop-shadow(0 0 22px #2a6cff)}
 @keyframes lbbob{50%{transform:translateY(-4px) scale(1.06)}}
 @keyframes lbpulse{50%{filter:brightness(1.35)}}
 @keyframes lbflame{0%{transform:scaleY(1) translateY(0)}50%{transform:scaleY(1.12) translateY(-4px) scaleX(.95)}}
 @media (prefers-reduced-motion: reduce){#limitBtn.ready,#limitBtn.ready .lb-flame,#limitBtn.ready .lb-fill{animation:none}}
+
+/* ---------- Tales-style battle text ---------- */
+#combo b{display:inline-flex;gap:0;vertical-align:bottom}
+#combo b img,.dmg.tn img{height:38px;image-rendering:pixelated;filter:drop-shadow(0 2px 0 #000)}
+#combo .hitsw{height:24px;margin-left:4px;image-rendering:pixelated;vertical-align:bottom;filter:drop-shadow(0 2px 0 #000)}
+.dmg.tn{display:flex;-webkit-text-stroke:0;font-size:0}
+.dmg.tn img{height:26px}
+.dmg.s.tn img{height:30px;filter:drop-shadow(0 0 4px #ff9a40) drop-shadow(0 2px 0 #000)}
+.dmg.c.tn img,.dmg.cb.tn img{height:38px;filter:sepia(1) saturate(4) hue-rotate(5deg) brightness(1.15) drop-shadow(0 0 6px #ffcc40) drop-shadow(0 2px 0 #000)}
+.dmg.c.tn::after{content:'!';font-size:32px;-webkit-text-stroke:3px #000;color:#ffe14d;font-style:italic;font-weight:900}
+.dmg.n{background:linear-gradient(180deg,#fff 0 42%,#c9c0e8 56%,#fff 100%);-webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-stroke:3px #1a1430;font-style:italic;font-weight:900}
+/* ---------- level up ---------- */
+#lvup{position:absolute;left:0;right:0;top:250px;height:300px;pointer-events:none;z-index:3;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px}
+#lvup .lv-rays{position:absolute;left:50%;top:50%;width:620px;height:620px;margin:-310px 0 0 -310px;border-radius:50%;
+  background:repeating-conic-gradient(from 0deg,rgba(255,236,160,.55) 0 7deg,transparent 7deg 20deg);-webkit-mask:radial-gradient(circle,#000 0,#000 18%,transparent 62%);mask:radial-gradient(circle,#000 0,#000 18%,transparent 62%);opacity:0}
+#lvup .lv-word{position:relative;display:flex;align-items:flex-end;gap:12px}
+#lvup .lv-word img{height:96px;image-rendering:pixelated;filter:drop-shadow(0 0 14px rgba(255,210,90,.9)) drop-shadow(0 4px 0 #1a1020)}
+#lvup .lv-word img+img{height:96px}
+#lvup .lv-word::after{content:'';position:absolute;inset:0;background:linear-gradient(100deg,transparent 30%,rgba(255,255,255,.95) 48%,transparent 62%);mix-blend-mode:overlay;transform:translateX(-120%)}
+#lvup .lv-num{display:flex;align-items:center;gap:10px;font-weight:900;color:#fff;text-shadow:var(--stroke)}
+#lvup .lv-num span{display:flex}#lvup .lv-num img{height:44px;image-rendering:pixelated;filter:drop-shadow(0 3px 0 #000)}
+#lvup .lv-num span:last-child img{filter:sepia(1) saturate(4) brightness(1.15) drop-shadow(0 0 8px #ffcc40) drop-shadow(0 3px 0 #000)}
+#lvup .lv-num i{font-style:normal;color:var(--gold);font-size:22px}
+#lvup .lv-sub{font-weight:900;font-size:14px;letter-spacing:.24em;color:var(--teal-hi);text-shadow:var(--stroke)}
+#lvup.on .lv-rays{animation:lvrays 2.2s ease-out forwards}
+#lvup.on .lv-word{animation:lvslam 2.2s cubic-bezier(.2,1.4,.4,1) forwards}
+#lvup.on .lv-word::after{animation:lvshine .9s .35s ease-out forwards}
+#lvup.on .lv-num{animation:lvnum 2.2s ease forwards}
+#lvup.on .lv-sub{animation:lvnum 2.2s .1s ease both}
+@keyframes lvrays{0%{opacity:0;transform:scale(.3) rotate(0)}15%{opacity:1}100%{opacity:0;transform:scale(1.3) rotate(60deg)}}
+@keyframes lvslam{0%{opacity:0;transform:scale(3.2)}12%{opacity:1;transform:scale(.92)}18%{transform:scale(1.06)}24%{transform:scale(1)}82%{opacity:1;transform:scale(1)}100%{opacity:0;transform:scale(1.1) translateY(-30px)}}
+@keyframes lvshine{to{transform:translateX(120%)}}
+@keyframes lvnum{0%,18%{opacity:0;transform:translateY(16px)}30%{opacity:1;transform:none}82%{opacity:1}100%{opacity:0}}
+/* ---------- Limit Break: rounded square crest button with label ---------- */
+#limitBtn{position:absolute;left:12px;bottom:362px;width:auto;height:66px;display:flex;align-items:center;gap:8px;padding:0;border:0;background:none;pointer-events:auto;cursor:pointer;--fill:0;--lc:#3aa0ff}
+#limitBtn .lb-box{position:relative;width:62px;height:62px;flex:none;border-radius:14px;overflow:hidden;border:3px solid #fff;
+  box-shadow:0 0 0 2px #07202a,0 0 0 4px var(--gold-d),0 6px 14px rgba(0,0,0,.6);background:#061018}
+#limitBtn .lb-box img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+#limitBtn .lb-dim{position:absolute;left:0;right:0;top:0;height:calc((1 - var(--fill))*100%);background:rgba(4,10,16,.78);transition:height .25s;backdrop-filter:grayscale(1)}
+#limitBtn .lb-dim::after{content:'';position:absolute;left:0;right:0;bottom:-2px;height:3px;background:var(--lc);box-shadow:0 0 8px var(--lc)}
+#limitBtn .lb-shine{position:absolute;inset:0;background:linear-gradient(115deg,transparent 35%,rgba(255,255,255,.75) 50%,transparent 65%);transform:translateX(-120%)}
+#limitBtn .lb-txt{display:flex;flex-direction:column;align-items:flex-start;line-height:.95}
+#limitBtn .lb-txt b{font-family:var(--f-head);font-weight:900;font-style:italic;font-size:17px;color:#fff;letter-spacing:.02em;
+  -webkit-text-stroke:4px #07202a;paint-order:stroke fill;text-shadow:0 2px 0 #000}
+#limitBtn .lb-txt small{margin-top:3px;font-weight:900;font-size:11px;color:var(--teal-hi);-webkit-text-stroke:3px #07202a;paint-order:stroke fill}
+#limitBtn .lb-flame{position:absolute;left:-16px;top:-34px;width:94px;height:104px;opacity:0;pointer-events:none;
+  background:radial-gradient(40% 55% at 50% 70%,var(--lc),transparent 70%),radial-gradient(18% 40% at 30% 55%,var(--lc),transparent 70%),radial-gradient(18% 45% at 70% 50%,#bfe8ff,transparent 70%),radial-gradient(12% 35% at 50% 22%,#fff,transparent 70%);
+  filter:blur(3px);mix-blend-mode:screen}
+#limitBtn.hector{--lc:#ff5030}
+#limitBtn.ready .lb-box{border-color:#fff;box-shadow:0 0 0 2px #07202a,0 0 0 4px #fff,0 0 22px var(--lc),0 0 44px var(--lc)}
+#limitBtn.ready .lb-shine{animation:lbshine 1.2s ease-in-out infinite}
+#limitBtn.ready .lb-flame{opacity:1;animation:lbflame .22s steps(2) infinite}
+#limitBtn.ready .lb-txt b{-webkit-text-stroke-color:var(--lc);text-shadow:0 0 12px var(--lc),0 2px 0 #000}
+#limitBtn.ready .lb-txt small{color:#fff}
+#limitBtn.ready{animation:lbbob 1s ease-in-out infinite}
+@keyframes lbshine{0%{transform:translateX(-120%)}60%,100%{transform:translateX(120%)}}
 /* spread the plate rows over the full 352px panel */
 #panel{gap:11px}
 .plate{margin-top:14px;height:42px}
@@ -826,10 +880,10 @@ button:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
       <span class="dps">DPS <b id="dpsTxt">0</b></span>
       <span class="diff" id="diffTxt"></span>
     </div>
-    <div id="combo"><b id="comboN">0</b><span>HITS</span></div>
+    <div id="combo"><b id="comboN">0</b><img class="hitsw" src="sprites/font/hits.png" alt="HITS"></div>
     <div id="lootFeed" aria-live="polite"></div>
     <div id="questHud"><div class="qh">Quests</div><div class="ql"></div></div>
-    <button type="button" id="limitBtn" aria-label="Limit Break"><span class="lb-flame"></span><span class="lb-tri"><span class="lb-fill"></span><img src="sprites/limit_icon.png" alt=""></span><span class="lb-pct" id="limitPct">0%</span></button>
+    <button type="button" id="limitBtn" aria-label="Limit Break"><span class="lb-flame"></span><span class="lb-box"><img id="limitIcon" src="sprites/crest_lyn.png" alt=""><span class="lb-dim"></span><span class="lb-shine"></span></span><span class="lb-txt"><b>LIMIT</b><b>BREAK</b><small id="limitPct">0%</small></span></button>
     <button type="button" id="questIcon" aria-label="Quest log"><img src="sprites/quest_icon.png" alt=""><i id="questDot" hidden></i></button>
     <img id="fbanner" alt="">
     <button type="button" id="qte" hidden><span class="ring"></span><span class="qx"><b>ENTER THE RIFT</b><small>TAP NOW</small></span></button>
@@ -870,6 +924,7 @@ button:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
     <div id="tip" hidden></div>
     <div id="questModal" hidden><div class="qm frame"><div class="qm-head"><b>Quest Log</b><button type="button" id="qmClose" aria-label="Close">✕</button></div><div id="qmBody"></div></div></div>
     <div id="rift"></div>
+    <div id="lvup" hidden><div class="lv-rays"></div><div class="lv-word"><img src="sprites/font/level.png" alt="Level"><img src="sprites/font/up.png" alt="up!"></div><div class="lv-num"><span id="lvFrom"></span><i>▶</i><span id="lvTo"></span></div><div class="lv-sub" id="lvSub"></div></div>
     <div id="cine" hidden><div class="cn-bg"></div><div class="cn-lines"></div><div class="cn-bar t"></div><div class="cn-bar b"></div>
       <img id="cnArt" class="cn-art" alt=""><div id="cnEyes" class="cn-eyes"></div>
       <div class="cn-title"><b id="cnTitle"></b><small id="cnSub"></small></div><div class="cn-flash"></div></div>
