@@ -1,5 +1,5 @@
 <!doctype html><html><head><meta charset=utf8><meta name="theme-color" content="#04131b"><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
-<title>Blazing Blade</title>
+<title>Blazing Blade</title><link rel="preload" as="image" href="sprites/title_art.webp">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800;900&family=Alegreya+Sans:wght@500;700;800&display=swap">
 <style>
@@ -908,6 +908,7 @@ button:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
 
 /* ---------- title screen ---------- */
 #title{position:absolute;inset:0;z-index:9;pointer-events:auto;cursor:pointer;overflow:hidden;background:#06121a}
+#title.loading #ttBtn{animation:none;opacity:.75;filter:saturate(.4);font-size:24px}
 #title .tt-art{position:absolute;inset:-3%;background:url(sprites/title_art.webp) center top/cover no-repeat;animation:ttken 22s ease-in-out infinite alternate;opacity:0;transition:opacity 1s}
 #title.in .tt-art{opacity:1}
 @keyframes ttken{from{transform:scale(1.02) translate(0,0)}to{transform:scale(1.1) translate(-1.5%,1%)}}
@@ -1020,20 +1021,25 @@ button:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
     <div id="cine" hidden><div class="cn-bg"></div><div class="cn-lines"></div><div class="cn-bar t"></div><div class="cn-bar b"></div>
       <img id="cnArt" class="cn-art" alt=""><div id="cnEyes" class="cn-eyes"></div>
       <div class="cn-title"><b id="cnTitle"></b><small id="cnSub"></small></div><div class="cn-flash"></div></div>
-    <div id="title" hidden>
+    <div id="title" class="in loading">
       <div class="tt-art"></div><div class="tt-rays"></div><div class="tt-embers"></div><div class="tt-shine"></div>
       <div class="tt-bottom">
-        <button type="button" id="ttBtn" class="tt-tap">TAP TO START</button>
-        <div class="tt-hint" id="ttHint">Tap anywhere to begin · sound on</div>
+        <button type="button" id="ttBtn" class="tt-tap">LOADING…</button>
+        <div class="tt-hint" id="ttHint">unrolling the map…</div>
         <div class="tt-foot">Fan prototype · sprites © Nintendo / Intelligent Systems</div>
       </div>
       <div class="tt-flash"></div>
     </div>
     <div id="gacha" hidden><div class="gx-title">Reliquary</div><div class="gx-sub" id="gxSub"></div><div class="gx-grid" id="gxGrid"></div><button type="button" class="tbtn" id="gxClose">Collect</button></div>
   </div>
-  <div id="loading"><span class="lt">Blazing Blade</span><small id="loadTxt">unrolling the map…</small></div>
 </div>
 
+<script>
+/* size the stage + UI overlay immediately so the title screen is the very first thing painted */
+(function(){var st=document.getElementById('stage'),ui=document.getElementById('ui');if(!st||!ui)return;
+var iw=innerWidth,ih=innerHeight,w=iw,h=ih;if(w/h>9/16)w=Math.round(h*9/16);if(h/w>2.2)h=Math.round(w*2.2);
+st.style.width=w+'px';st.style.height=h+'px';st.style.top=Math.round((ih-h)/2)+'px';ui.style.height=(540*h/w)+'px';ui.style.transform='scale('+(w/540)+')';})();
+</script>
 <script src="vendor/three.min.js"></script>
 <script src="spine-core.js"></script>
 <script src="engine.js"></script>

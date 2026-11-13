@@ -13,7 +13,7 @@ const AUDIO = (() => {
   /* ---------- music: two looping <audio> streams with crossfade ---------- */
   const TRACKS = { normal: 'audio/main_heroine.mp3', void: 'audio/dungeon.mp3', title: 'audio/title.mp3' };
   const MUSIC_VOL = { normal: .62, void: .7, title: .75 };
-  const tracks = {}; let world = 'normal', duck = 1;
+  const tracks = {}; let world = 'title', duck = 1;
   function makeTrack(key) {
     const el = new Audio(); el.src = TRACKS[key]; el.loop = true; el.preload = 'auto'; el.crossOrigin = 'anonymous';
     const g = ctx.createGain(); g.gain.value = 0; let src = null;

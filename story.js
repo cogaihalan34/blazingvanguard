@@ -254,7 +254,10 @@ const TITLE = {
   stage: 0,
   show() {
     G.title = true; AUDIO.setWorld('title');
-    const t = $('title'); t.hidden = false; requestAnimationFrame(() => t.classList.add('in'));
+    const t = $('title'); t.hidden = false; t.classList.add('in'); t.classList.remove('loading');
+    $('ttBtn').textContent = 'TAP TO START'; $('ttHint').textContent = 'Tap anywhere to begin · sound on';
+    // tapped while still loading → audio is already unlocked, go straight to "TAP TO PLAY"
+    if (AUDIO.started) { this.stage = 1; t.classList.add('armed'); $('ttBtn').textContent = 'TAP TO PLAY'; $('ttHint').textContent = 'Lyn & Hector await your command'; }
     const go = (e) => {
       if (this.stage === 0) {
         this.stage = 1; AUDIO.start(); AUDIO.setWorld('title'); t.classList.add('armed');

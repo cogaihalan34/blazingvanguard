@@ -1186,7 +1186,7 @@ function frameBody(now) {
 async function boot() {
   layout();
   buildFxTextures();
-  const lt = document.getElementById('loadTxt');
+  const lt = document.getElementById('ttHint');
   try {
     lt.textContent = 'rallying Lyn · Hector…';
     await Promise.all(PARTY_KEYS.map(k => loadSprite(k)));
@@ -1212,7 +1212,6 @@ async function boot() {
   G.clearT = 1.4;
   UI.init();
   QUESTS.init(); STORY.init();
-  document.getElementById('loading').remove();
   TITLE.show();
   last = performance.now();
   requestAnimationFrame(frame);
