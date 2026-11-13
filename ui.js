@@ -215,7 +215,7 @@ const UI = {
       s.style.setProperty('--cd', cd > 0 ? (cd / mx).toFixed(3) : 0);
       s.querySelector('.cdt').textContent = locked ? (h.level < h.cls.skillReq[i] ? 'Lv ' + h.cls.skillReq[i] : h.skillPts > 0 && nodeInfo(h, { kind: 'skill', i }).can ? 'Learn' : '—') : cd > 0 ? Math.ceil(cd) : '';
       s.classList.toggle('locked', locked);
-      s.classList.toggle('nomana', !locked && h.mana < h.cls.skillCost[i]);
+      s.querySelector('.mc').textContent = h.cost(i); s.classList.toggle('nomana', !locked && h.mana < h.cost(i));
       s.classList.toggle('cast', h.mode === 'skill' && h.skillIdx === i);
       s.classList.toggle('q', h.queue === i);
       s.classList.toggle('next', G.auto && h.skillPtr === i && !locked);
@@ -449,7 +449,7 @@ const UI = {
       const i = sel.i, m = ASSETS[h.key].meta['skill_' + i];
       const hits = Math.max(1, m.windows || m.skillEv || 1);
       const lvE = h.effLv(i), cur = Math.round(C.skillMult[i] * 100 * (lvE ? h.skillMul(i) : 1)), nxt = Math.round(C.skillMult[i] * 100 * (1 + .15 * Math.max(0, lvE)));
-      det = `<div class="sn">${ROMAN[i]} · ${C.skillNames[i]}</div><div class="sk">Active skill · Mana ${C.skillCost[i]} · Cooldown ${C.skillCd[i]}s · Requires level ${C.skillReq[i]}${inf.prev >= 0 ? ' · needs ' + C.skillNames[inf.prev] : ''}</div>
+      det = `<div class="sn">${ROMAN[i]} · ${C.skillNames[i]}</div><div class="sk">Active skill · Mana ${C.skillCost[i]} · Cooldown ${C.skillCd[i]}s${inf.prev >= 0 ? ' · needs ' + C.skillNames[inf.prev] : ''}</div>
         <p>Deals <b>${cur}%</b> weapon damage spread over ${hits} hit${hits > 1 ? 's' : ''}.${h.S.skills ? ` (+${h.S.skills} from items)` : ''}</p>
         ${inf.lv < SKILL_MAX ? `<p class="nx">Next rank: ${nxt}% weapon damage</p>` : ''}`;
     } else {

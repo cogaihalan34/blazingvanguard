@@ -52,14 +52,16 @@ class Plat {
 function addPlat(x0, x1, y) { const p = new Plat(x0, x1, y, G.secret ? 'void' : 'grass'); PLATS.push(p); return p; }
 function clearPlats(all) { for (let i = PLATS.length - 1; i >= 0; i--) { const p = PLATS[i]; if (all || p.x1 < G.camX - 600) { p.dispose(); PLATS.splice(i, 1); } } }
 function platAt(x, y) { for (const p of PLATS) if (Math.abs(p.y - y) < 3 && x >= p.x0 - 6 && x <= p.x1 + 6) return p; return null; }
-function landingFor(x, prevY, y, ignore) { let best = null; for (const p of PLATS) if (p !== ignore && x >= p.x0 - 8 && x <= p.x1 + 8 && prevY >= p.y - 1 && y <= p.y && (!best || p.y > best.y)) best = p; return best; }
+function landingFor(x, prevY, y, ignore, maxY) { let best = null; for (const p of PLATS) if (p !== ignore && !(maxY != null && p.y > maxY + 10) && x >= p.x0 - 8 && x <= p.x1 + 8 && prevY >= p.y - 1 && y <= p.y && (!best || p.y > best.y)) best = p; return best; }
 function floorBelow(x, y) { let best = 0; for (const p of PLATS) if (x >= p.x0 && x <= p.x1 && p.y <= y + 2 && p.y > best) best = p.y; return best; }
 /* level an enemy stands on (null = flying, reachable from anywhere close) */
-function levelOf(e) { if (e.D && e.D.fly) return null; return e.floorY || 0; }
+/* the ledge an enemy really stands on: its actual height when grounded (floorY can go stale), its last ledge while airborne */
+function footY(e) { return e.air ? (e.floorY || 0) : (e.y || 0); }
+function levelOf(e) { if (e.D && e.D.fly) return null; return footY(e); }
 /* same footing: an enemy knocked into the air still counts by the ledge it stands on, so a hero below never "juggles" it from the ground */
-function sameLevel(h, e) { if (e.D && e.D.fly) return Math.abs(h.y - (e.y || 0)) < 320; return Math.abs((e.floorY || 0) - h.y) < 70; }
+function sameLevel(h, e) { if (e.D && e.D.fly) return Math.abs(h.y - (e.y || 0)) < 320; return Math.abs(footY(e) - h.y) < 70; }
 /* can a swing from the hero's footing connect with this enemy? */
-function canStrike(h, e) { if (e.D && e.D.fly) return Math.abs(h.y - (e.y || 0)) < 360; return Math.abs((e.floorY || 0) - h.y) < 90; }
+function canStrike(h, e) { if (e.D && e.D.fly) return Math.abs(h.y - (e.y || 0)) < 360; return Math.abs(footY(e) - h.y) < 90; }
 /* lay out 1–2 ledges ahead for a wave; returns them so mobs can be placed on top */
 function makeWavePlats(baseX) {
   clearPlats(false);
@@ -84,9 +86,9 @@ function heroJumpTo(h, tl, tgt) {
     const side = tgt.x >= h.x ? 1 : -1; h.face = side;
     let lx = tgt.x - side * h.cls.range * .7; if (p) lx = Math.max(p.x0 + 50, Math.min(p.x1 - 50, lx));
     vy = vy0; jvx = Math.max(-1100, Math.min(1100, (lx - h.x) / T));
-    h.ignorePlat = null;
+    h.ignorePlat = null; h.dropTo = null;
   } else {
-    h.ignorePlat = platAt(h.x, h.y);
+    h.ignorePlat = platAt(h.x, h.y); h.dropTo = tl;
     const side = tgt.x >= h.x ? 1 : -1; h.face = side;
     const here = platAt(h.x, h.y), toEdge = here ? (side > 0 ? here.x1 + 40 - h.x : here.x0 - 40 - h.x) : 0;
     let lx = tgt.x - side * h.cls.range * .7;
@@ -100,15 +102,15 @@ function heroJumpTo(h, tl, tgt) {
 function heroAirTick(h, dt) {
   const dead = h.mode === 'dead';
   if (!h.air) {
-    if (h.y > 0 && !platAt(h.x, h.y)) { h.air = true; h.vy = 0; h.jvx = 0; h.ignorePlat = null; if (!dead) { h.mode = 'jump'; h.play('jump', true); } }
+    if (h.y > 0 && !platAt(h.x, h.y)) { h.air = true; h.vy = 0; h.jvx = 0; h.ignorePlat = null; h.dropTo = null; if (!dead) { h.mode = 'jump'; h.play('jump', true); } }
     return;
   }
   const prev = h.y;
   h.vy -= GRAV * dt; h.y += h.vy * dt; h.x += h.jvx * dt;
   if (h.vy < 0) {
-    const p = landingFor(h.x, prev, h.y, h.ignorePlat);
+    const p = landingFor(h.x, prev, h.y, h.ignorePlat, h.dropTo);
     if (p || h.y <= 0) {
-      h.y = p ? p.y : 0; h.air = false; h.vy = 0; h.ignorePlat = null; if (!dead) { h.mode = 'idle'; h.play('idle', true); }
+      h.y = p ? p.y : 0; h.air = false; h.vy = 0; h.ignorePlat = null; h.dropTo = null; if (!dead) { h.mode = 'idle'; h.play('idle', true); }
       SFX.land(); shake(3, .08);
       spawnFx({ tex: TX.smoke, x: h.x, y: GROUND + h.y + 8, sx: 160, sy: 40, sx1: 360, sy1: 90, life: .4, color: G.secret ? 0x804050 : 0xd8c8a8, a0: .7, ro: 16 });
     }

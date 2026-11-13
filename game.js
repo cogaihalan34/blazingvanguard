@@ -22,7 +22,7 @@ const CLASS = {
     dmgStat: 'dex', weapons: ['sword'], off: 'shield', auto: { str: 1, dex: 3, vit: 1, ene: 0 },
     combo: ['attack', 'attack_1', 'attack_2', 'attack_3'], comboMult: [.9, .95, 1.05, 1.7],
     skillNames: ['Sacaen Flurry', 'Gale Spin', 'Rising Crane', 'Mani Katti', 'Wind Cutter', 'Blade Dance', 'Lightning Strike', 'Sol Katti'],
-    skillMult: [5, 4.5, 6, 7.5, 8, 7, 18, 24], skillCd: [4, 5, 6, 7, 8, 7, 16, 22], skillCost: [3, 4, 5, 7, 8, 6, 14, 20], skillReq: [1, 3, 6, 9, 12, 18, 24, 30],
+    skillMult: [5, 4.5, 6, 7.5, 8, 7, 18, 24], skillCd: [4, 5, 6, 7, 8, 7, 16, 22], skillCost: [3, 4, 5, 7, 8, 6, 14, 20], skillReq: [1, 1, 1, 1, 1, 1, 1, 1],
     range: 170, start: [['ssd', 'normal'], ['buc', 'normal']],
     passives: [
       { n: 'Sword Mastery', d: '+8% damage and +25 Attack Rating per point', req: 1, st: l => ({ edmg: 8 * l, ar: 25 * l }) },
@@ -37,7 +37,7 @@ const CLASS = {
     dmgStat: 'str', weapons: ['scythe', 'sword'], off: 'shield', auto: { str: 2, dex: 1, vit: 2, ene: 0 },
     combo: ['attack', 'attack_1', 'attack_2'], comboMult: [1.05, 1.5, 1.2],
     skillNames: ['Hand Axe', 'Armads Cleave', 'Ostian Leap', 'Tomahawk Storm', 'Great Lord Swing', 'Pavise Charge', 'Wolf Beil', 'Armads Judgment'],
-    skillMult: [5, 5, 7, 8, 9, 6, 18, 25], skillCd: [4, 5, 6, 7, 8, 7, 16, 22], skillCost: [3, 4, 5, 7, 8, 6, 14, 20], skillReq: [1, 3, 6, 9, 12, 18, 24, 30],
+    skillMult: [5, 5, 7, 8, 9, 6, 18, 25], skillCd: [4, 5, 6, 7, 8, 7, 16, 22], skillCost: [3, 4, 5, 7, 8, 6, 14, 20], skillReq: [1, 1, 1, 1, 1, 1, 1, 1],
     range: 170, start: [['ssd', 'normal'], ['buc', 'normal']],
     passives: [
       { n: 'Axe Mastery', d: '+8% damage and +20 Attack Rating per point', req: 1, st: l => ({ edmg: 8 * l, ar: 20 * l }) },
@@ -52,7 +52,7 @@ const CLASS = {
     dmgStat: 'str', weapons: ['scythe', 'sword'], off: 'shield', auto: { str: 2, dex: 1, vit: 2, ene: 0 },
     combo: ['attack', 'attack_1', 'attack_2', 'attack_3'], comboMult: [1.0, 1.0, 1.1, 1.6],
     skillNames: ['Lance Charge', 'Rapier Arc', 'Cavalier Leap', 'Pherae Feint', 'Galloping Thrust', 'Triple Pierce', 'Durandal', 'Blazing Blade'],
-    skillMult: [5, 4.5, 6, 6.5, 8, 7, 18, 24], skillCd: [4, 5, 6, 6, 8, 7, 14, 20], skillCost: [3, 4, 5, 5, 7, 6, 12, 18], skillReq: [1, 3, 6, 9, 12, 18, 24, 30],
+    skillMult: [5, 4.5, 6, 6.5, 8, 7, 18, 24], skillCd: [4, 5, 6, 6, 8, 7, 14, 20], skillCost: [3, 4, 5, 5, 7, 6, 12, 18], skillReq: [1, 1, 1, 1, 1, 1, 1, 1],
     range: 230, start: [['ssd', 'normal'], ['buc', 'normal']],
     passives: [
       { n: 'Lance Mastery', d: '+8% damage and +25 Attack Rating per point', req: 1, st: l => ({ edmg: 8 * l, ar: 25 * l }) },
@@ -143,7 +143,7 @@ class Hero {
     this.equip = {}; for (const s of SLOTS) this.equip[s] = null;
     this.belt = [[], [], [], []];
     this.skillCd = Array(8).fill(0); this.skillPtr = 0; this.queue = -1; this.sinceSkill = 0;
-    this.skillLv = [1, 0, 0, 0, 0, 0, 0, 0]; this.passLv = [0, 0, 0, 0]; this.skillPts = 0;
+    this.skillLv = [1, 1, 1, 1, 1, 1, 1, 1]; this.passLv = [0, 0, 0, 0]; this.skillPts = 0;
     this.mode = 'bench'; this.freeze = 0; this.x = 0; this.vx = 0; this.y = 0; this.vy = 0; this.air = false; this.jvx = 0; this.ignorePlat = null; this.face = 1; this.limit = 0; this.reviveT = 0; this.heals = []; this.invuln = 0; this.potCd = 0;
     this.hitSets = new Map(); this.flashRed = 0;
     this.view.state.addListener({ event: (e, ev) => this.onEvent(ev.data.name) });
@@ -187,7 +187,8 @@ class Hero {
     this.entry = this.view.state.setAnimation(0, name, loop);
     this.hitSets.clear(); this.view.prevBox.clear();
   }
-  skillReady(i) { return this.learned(i) && this.skillCd[i] <= 0 && this.mana >= this.cls.skillCost[i]; }
+  cost(i) { return Math.min(this.cls.skillCost[i], Math.floor(this.S.manaMax)); }
+  skillReady(i) { return this.learned(i) && this.skillCd[i] <= 0 && this.mana >= this.cost(i); }
   pickSkill() {
     if (this.queue >= 0) { const q = this.queue; if (this.skillReady(q)) { this.queue = -1; return q; } if (!this.learned(q)) this.queue = -1; }
     if (!G.auto || this.sinceSkill < 1.6) return -1;
@@ -202,7 +203,7 @@ class Hero {
   castSkill(i) {
     this.play('skill_' + i, false);
     this.mode = 'skill'; this.skillIdx = i;
-    this.skillCd[i] = this.cls.skillCd[i] * (1 - Math.min(50, this.S.cdr || 0) / 100); this.mana = Math.max(0, this.mana - this.cls.skillCost[i]);
+    this.skillCd[i] = this.cls.skillCd[i] * (1 - Math.min(50, this.S.cdr || 0) / 100); this.mana = Math.max(0, this.mana - this.cost(i));
     if (i === this.skillPtr) this.skillPtr = (i + 1) % 8;
     this.sinceSkill = 0;
     const m = this.meta;
@@ -315,7 +316,7 @@ class Hero {
     let best = null, bd = 1e9;
     for (const e of allEnemies()) {
       const vb = viewBounds(); if (e.dead || e.x > vb[1] + 40 || e.x < vb[0] - 200) continue;
-      const d = Math.abs(e.x - this.x) + (sameLevel(this, e) ? 0 : 380) + (e.x < this.x ? 60 : 0);
+      const d = Math.abs(e.x - this.x) + (sameLevel(this, e) ? 0 : 380) + (e.x < this.x ? 60 : 0) + ((e.unreachT || 0) > G.time ? 900 : 0);
       if (d < bd) { bd = d; best = e; }
     }
     return best;
@@ -405,6 +406,20 @@ class Hero {
     const dist = tgt ? this.gapTo(tgt) : 1e9;
     const same = !tgt || sameLevel(this, tgt);
     const inRange = tgt && dist <= range && same;
+    // stuck watchdog: swinging "in range" for a while without landing a single hit (wrong ledge, stale footing,
+    // hurtbox out of reach) → stop flailing and path to the target's real footing
+    if (!inRange || G.waveHold) this.atkSince = 0;
+    else if (!this.atkSince) this.atkSince = G.time;
+    if (inRange && this.atkSince && G.time - Math.max(this.atkSince, this.lastHitT || 0) > 1.6 && !busy && this.mode !== 'appear' && this.mode !== 'tagin') {
+      this.atkSince = 0;
+      if (!tgt.D.fly) { const fy = footY(tgt); if (!tgt.air) tgt.floorY = fy; }
+      tgt.unreachT = G.time + 2.5;
+      const tl = levelOf(tgt);
+      this.comboIdx = 0; this.mode = 'idle';
+      if (tl !== null && Math.abs(tl - this.y) > 40) { heroJumpTo(this, tl, tgt); return; }
+      // same footing but whiffing: blink-dash right onto the target
+      ghost(this, this.cls.color, .25, .5); this.x = tgt.x - this.face * Math.min(range * .45, 70); this.faceTo(tgt); return;
+    }
     if (this.mode === 'appear') { if (tt >= this.meta.dur) this.mode = 'idle'; else return; }
     if (this.mode === 'tagin') { if (tt < this.nextAt) return; this.mode = 'idle'; }
     if (this.mode === 'combo' || this.mode === 'skill') {
@@ -522,8 +537,8 @@ function autoSkill(h) {
 function respec(h) {
   h.points += (h.attr.str - h.cls.base.str) + (h.attr.dex - h.cls.base.dex) + (h.attr.vit - h.cls.base.vit) + (h.attr.ene - h.cls.base.ene);
   h.attr = Object.assign({}, h.cls.base);
-  h.skillPts += h.skillLv.reduce((a, b) => a + b, 0) - 1 + h.passLv.reduce((a, b) => a + b, 0);
-  h.skillLv = [1, 0, 0, 0, 0, 0, 0, 0]; h.passLv = [0, 0, 0, 0]; h.skillPtr = 0;
+  h.skillPts += h.skillLv.reduce((a, b) => a + b, 0) - 8 + h.passLv.reduce((a, b) => a + b, 0);
+  h.skillLv = [1, 1, 1, 1, 1, 1, 1, 1]; h.passLv = [0, 0, 0, 0]; h.skillPtr = 0;
   h.recalc(); UI.dirtyAll(); save(true);
 }
 
@@ -900,6 +915,7 @@ function allEnemies() { const a = G.mobs.slice(); if (G.boss && !G.boss.dead) a.
 const ELEM_COL = { fire: 0xff7a30, cold: 0x7fb4ff, ltng: 0xffe24a };
 function dealDamage(hero, e, mult, heavy, isSkill, sure) {
   const S = hero.S;
+  hero.lastHitT = G.time; e.unreachT = 0;
   const hb = e.hurtBox();
   if (!sure && Math.random() > chanceToHit(S.ar * (isSkill ? 1.5 : 1), e.def, hero.level, e.mlvl)) {
     UI.number(e.x + rnd(-30, 30), hb[3] + 20, 'MISS', 'm'); return;
@@ -1071,8 +1087,8 @@ function load() {
       h.level = s.level; h.xp = s.xp; h.attr = s.attr; h.points = s.points;
       for (const k of SLOTS) h.equip[k] = s.equip && s.equip[k] && BASE[s.equip[k].base] ? s.equip[k] : null;
       h.belt = s.belt && s.belt.length === 4 ? s.belt : [[], [], [], []];
-      if (s.skillLv) { h.skillLv = s.skillLv; h.passLv = s.passLv || [0, 0, 0, 0]; h.skillPts = s.skillPts || 0; }
-      else { h.skillLv = [1, 0, 0, 0, 0, 0, 0, 0]; h.passLv = [0, 0, 0, 0]; h.skillPts = Math.max(0, h.level - 1); }
+      if (s.skillLv) { h.skillLv = s.skillLv.map(v => Math.max(1, v)); h.passLv = s.passLv || [0, 0, 0, 0]; h.skillPts = s.skillPts || 0; }
+      else { h.skillLv = [1, 1, 1, 1, 1, 1, 1, 1]; h.passLv = [0, 0, 0, 0]; h.skillPts = Math.max(0, h.level - 1); }
       h.recalc(); h.life = h.S.lifeMax; h.mana = h.S.manaMax;
     });
     return true;
