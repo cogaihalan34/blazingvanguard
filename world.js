@@ -98,8 +98,9 @@ function heroJumpTo(h, tl, tgt) {
   spawnFx({ tex: TX.smoke, x: h.x, y: GROUND + h.y + 10, sx: 120, sy: 40, sx1: 300, sy1: 80, life: .35, color: G.secret ? 0x804050 : 0xd8c8a8, a0: .6, ro: 16 });
 }
 function heroAirTick(h, dt) {
+  const dead = h.mode === 'dead';
   if (!h.air) {
-    if (h.y > 0 && !platAt(h.x, h.y)) { h.air = true; h.vy = 0; h.jvx = 0; h.ignorePlat = null; h.mode = 'jump'; h.play('jump', true); }
+    if (h.y > 0 && !platAt(h.x, h.y)) { h.air = true; h.vy = 0; h.jvx = 0; h.ignorePlat = null; if (!dead) { h.mode = 'jump'; h.play('jump', true); } }
     return;
   }
   const prev = h.y;
@@ -107,7 +108,7 @@ function heroAirTick(h, dt) {
   if (h.vy < 0) {
     const p = landingFor(h.x, prev, h.y, h.ignorePlat);
     if (p || h.y <= 0) {
-      h.y = p ? p.y : 0; h.air = false; h.vy = 0; h.ignorePlat = null; h.mode = 'idle'; h.play('idle', true);
+      h.y = p ? p.y : 0; h.air = false; h.vy = 0; h.ignorePlat = null; if (!dead) { h.mode = 'idle'; h.play('idle', true); }
       SFX.land(); shake(3, .08);
       spawnFx({ tex: TX.smoke, x: h.x, y: GROUND + h.y + 8, sx: 160, sy: 40, sx1: 360, sy1: 90, life: .4, color: G.secret ? 0x804050 : 0xd8c8a8, a0: .7, ro: 16 });
     }

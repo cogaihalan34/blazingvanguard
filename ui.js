@@ -225,6 +225,7 @@ const UI = {
     $('tagSub').textContent = p.reviveT > 0 ? `Recovering ${Math.ceil(p.reviveT)}s` : `Level ${p.level}`;
     const tcd = Math.max(G.tagCd, p.reviveT > 0 ? 1 : 0);
     $('tagBtn').classList.toggle('cool', tcd > 0);
+    $('tagBtn').classList.toggle('ready', tcd <= 0 && !G.partner.dead && !G.hero.cineStrike);
     $('tagCd').textContent = G.tagCd > 0 ? Math.ceil(G.tagCd) : '';
     $('goldTxt').textContent = fmt(G.gold);
     const cut = G.time - 5; while (G.dmgLog.length && G.dmgLog[0][0] < cut) G.dmgLog.shift();

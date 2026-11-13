@@ -34,8 +34,8 @@ function limitBreak(h) {
 /* ---------- finisher cutscenes ---------- */
 const CINE_DEF = {
   lyn: {
-    title: 'Trident Tempest', sub: 'LIMIT BREAK · SPEAR OF THE SACAE SKY', theme: 'wind',
-    eyes: { size: 616 * 2.25, x: -60 * 2.25, y: -168 * 2.25 }, art: 'sprites/lyn_art.webp',
+    title: 'Sacaean Frost Dance', sub: 'LIMIT BREAK · BLADE OF THE SACAE WIND', theme: 'wind',
+    eyes: { size: 616 * 2.25, x: -66 * 2.25, y: -166 * 2.25 }, art: 'sprites/lyn_art.webp',
   },
   hector: {
     title: 'Meteor Armads', sub: 'LIMIT BREAK · STARFALL OF OSTIA', theme: 'fire',
@@ -75,36 +75,27 @@ const CINE = {
       setTimeout(() => { const el = $('cine'); el.hidden = true; el.className = ''; }, 450);
     }
     if (h.key === 'lyn') {
-      /* Trident: a colossal spear descends from the sky through a storm vortex, then detonates in a pillar of light */
-      if (at(1.6)) {
-        A.vortex = sheetFx('trident', 0, 0, { screen: true, fit: 1.25, dy: (VH - GROUND) / 2 + 40, ro: 64, color: 0x9fe0ff, alpha: 1, speed: 1.5, fadeIn: .3, fade: .4 });
-        if (FXT.tridentW) {
-          const mk = (blend, col, op) => { const m = new THREE.Mesh(fxGeo, new THREE.MeshBasicMaterial({ map: FXT.tridentW, transparent: true, depthTest: false, depthWrite: false, blending: blend, color: col, opacity: op })); m.renderOrder = 65; m.frustumCulled = false; scene.add(m); return m; };
-          A.glow = mk(THREE.AdditiveBlending, 0x60c0ff, .9); A.spear = mk(THREE.NormalBlending, 0xffffff, 1);
-          A.glow.renderOrder = 64.5;
-        }
-        h.play('skill_6', false); SFX.portal && SFX.portal();
-      }
-      if (A.spear) {
-        const vb = viewBounds(), cx = (vb[0] + vb[1]) / 2, H = 1700, Wd = H * 29 / 121;
-        const k = Math.min(1, Math.max(0, (A.t - 1.6) / 1.55)), e = k < 1 ? k * k * k : 1;     // slow approach, sudden plunge
-        const yTop = GROUND + 2600, yHit = GROUND + H / 2 - 120;
-        const y = yTop + (yHit - yTop) * e + (k >= 1 ? Math.sin(A.t * 60) * Math.max(0, 3.6 - A.t) * 8 : 0);
-        for (const m of [A.spear, A.glow]) { m.position.set(cx, y, 0); m.scale.set(Wd * (m === A.glow ? 1.5 : 1), -H * (m === A.glow ? 1.06 : 1), 1); }
-        A.glow.material.opacity = .55 + Math.sin(A.t * 20) * .25;
-        if (A.t > 3.9) { const f = Math.max(0, 1 - (A.t - 3.9) / .4); A.spear.material.opacity = f; A.glow.material.opacity *= f; }
-        if (A.t < 3.15 && Math.random() < .6) spawnFx({ tex: TX.streak, x: cx + rnd(-Wd, Wd), y: y + rnd(0, H / 2), rot: -Math.PI / 2, sx: rnd(200, 420), sy: 6, sx1: 40, sy1: 2, life: .25, color: 0x9fe8ff, ro: 64 });
-      }
-      if (at(3.15)) {
-        BG.flash(1.3); shake(40, .8); G.hitstop = Math.max(G.hitstop, .1); SFX.thunder && SFX.thunder(); SFX.boss();
+      /* Sacaean Critical: her full sword-dance chain (spin, lunges, afterimage thrusts, vanishing slash, final cut)
+         with Megacool ice erupting under the enemies and giant crescent slashes over the screen */
+      if (at(1.6)) { A.lastHit = -1; h.play('limit', false); h.view.state.timeScale = 1; A.animEnd = 1.6 + h.view.anim.dur + .35; }
+      const fr = h.view.anim && h.view.anim.name === 'limit' ? h.view.anim.f[h.view.fi] : null;
+      if (fr && fr.hit !== undefined && fr.hit !== A.lastHit) {
+        A.lastHit = fr.hit; const n = fr.hit, tg = this.targets(), FX = ASSETS.lyn.fxTex || {};
         const vb = viewBounds(), cx = (vb[0] + vb[1]) / 2;
-        for (let r = 0; r < 4; r++) spawnFx({ tex: TX.ring, x: cx, y: GROUND + 14, sx: 120, sy: 30, sx1: 1800 + r * 300, sy1: 300, life: .5 + r * .12, color: r % 2 ? 0x60c8ff : 0xe0f8ff, ro: 58, ease: 3 });
-        for (const e of this.targets()) sheetFx('bolt', e.x, GROUND + (e.floorY || 0) - 10, { scale: 4.6, color: 0xb8e8ff, ro: 63 });
-        this.strike(h, mult * .45);
+        const arcs = ['arc', 'slash', 'arc2', 'nick', 'arc', 'streak', 'arc2', 'slash', 'arc'];
+        const T = FX[arcs[n % arcs.length]];
+        if (T) { const k = 9 + (n === 8 ? 5 : 0); spawnFx({ tex: T.tex, x: cx + rnd(-140, 140), y: GROUND + rnd(200, 480), sx: T.w * k, sy: T.h * k, sx1: T.w * k * 1.25, sy1: T.h * k * 1.1, rot: rnd(-.5, .5), life: .28, color: 0xdff8ff, ro: 66 }); }
+        for (const e of tg) spawnFx({ tex: TX.slash, x: e.x, y: GROUND + (e.floorY || 0) + rnd(120, 260), rot: rnd(-1, 1), sx: 260, sy: 80, sx1: 700, sy1: 160, life: .2, color: 0xa8f0ff, ro: 64 });
+        for (let g = 0; g < 3; g++) ghost(h, 0x80e8ff, .3, .45 - g * .12);
+        if (n === 2 || n === 5) for (const e of tg) sheetFx('megacool', e.x, GROUND + (e.floorY || 0) - 20, { scale: 3.6, color: 0xd0f4ff, ro: 63, speed: 1.6 });
+        if (n === 6) sheetFx('megacool', 0, 0, { screen: true, fit: 1.15, dy: 140, ro: 63, color: 0xc8f0ff, speed: 1.3 });
+        if (n === 8) { BG.flash(1.1); shake(36, .7); SFX.thunder && SFX.thunder(); for (const e of tg) sheetFx('megacool', e.x, GROUND + (e.floorY || 0) - 20, { scale: 4.6, color: 0xffffff, ro: 63, speed: 1.2 }); }
+        else { shake(10 + n * 2, .18); BG.flash(.25); }
+        SFX.swing(true); SFX.hit(true, n >= 7);
+        G.hitstop = Math.max(G.hitstop, n === 8 ? .12 : .035);
+        this.strike(h, mult / (n === 8 ? 4 : 10.7));
       }
-      if (at(3.45)) { this.strike(h, mult * .3); shake(20, .3); }
-      if (at(3.75)) { this.strike(h, mult * .25); shake(14, .3); BG.flash(.6); }
-      if (at(4.3)) this.end(h);
+      if (A.animEnd && A.t >= A.animEnd) this.end(h);
     } else {
       /* Meteor: Hector calls down a starfall — the sky goes dark, burning rocks rain on the field, the ground erupts */
       if (at(1.6)) {
@@ -141,7 +132,7 @@ const CINE = {
   },
   end(h) {
     this.cleanup(this.active); this.active = null; this.slow = 1;
-    h.cineStrike = false; h.invuln = .5; h.mode = 'idle'; h.nextAt = 0; h.play('idle', true);
+    h.cineStrike = false; h.invuln = .5; h.nextAt = 0; if (h.mode !== 'dead' && h.life > 0) { h.mode = 'idle'; h.play('idle', true); }
   },
 };
 

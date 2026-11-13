@@ -1092,12 +1092,25 @@ function starterKit(h) {
    MAIN LOOP
    ========================================================================= */
 let last = performance.now();
+/* the loop never dies on a single bad frame: log it, drop any cutscene, keep rendering */
+let frameErrs = 0;
 function frame(now) {
   requestAnimationFrame(frame);
+  try { frameBody(now); frameErrs = 0; }
+  catch (err) {
+    if (frameErrs++ < 5) console.error(err);
+    try { if (CINE.active) CINE.abort(); CINE.slow = 1; G.hitstop = 0; G.slowmo = null; } catch (e) { }
+    try { renderer.render(scene, camera); } catch (e) { }
+  }
+}
+function frameBody(now) {
   const real = Math.min(.05, (now - last) / 1000); last = now;
   let dt = real * G.speed;
   if (G.hitstop > 0) { G.hitstop -= real; dt *= .12; }
-  CINE.tick(real); dt *= CINE.slow;
+  try { CINE.tick(real); } catch (err) { console.error(err); CINE.abort(); }
+  dt *= CINE.slow;
+  // safety net: a hero at 0 life must always go through the death / tag-out flow
+  if (G.hero && G.hero.life <= 0 && G.hero.mode !== 'dead' && G.hero.mode !== 'bench' && !G.hero.cineStrike) G.hero.die();
   let zoom = 1, focus = null;
   if (G.slowmo) {
     const sm = G.slowmo; sm.t -= real;

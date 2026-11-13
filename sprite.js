@@ -125,7 +125,7 @@ function spriteSnap(key, frameId, opt) {
 }
 
 /* painted hero art (FEH-style portraits) for portraits, the paper doll and ultimate cut-ins; face = [x, y, size] crop */
-const HERO_ART = { lyn: { src: 'sprites/lyn_art.webp', face: [126, 92, 230] }, hector: { src: 'sprites/hector_art.webp', face: [160, 40, 240] } };
+const HERO_ART = { lyn: { src: 'sprites/lyn_art.webp', face: [62, 105, 240] }, hector: { src: 'sprites/hector_art.webp', face: [160, 40, 240] } };
 async function loadHeroArt() {
   await Promise.all(Object.values(HERO_ART).map(a => loadImage(a.src).then(im => { a.img = im; }).catch(() => null)));
 }
@@ -143,7 +143,6 @@ const SFX_FS2 = `uniform sampler2D map; uniform float uAlpha; uniform vec3 uCol;
 void main(){ vec3 c = texture2D(map, vUv).rgb * uCol; float e = smoothstep(0.0, .14, vL.y) * smoothstep(1.0, .86, vL.y); gl_FragColor = vec4(c, uAlpha * e); }`;
 const FXT = {}, SHEET_FX = [];
 async function loadSheetFx() {
-  loadImage('sprites/trident.png').then(img => { const t = new THREE.Texture(img); t.magFilter = THREE.NearestFilter; t.minFilter = THREE.NearestFilter; t.generateMipmaps = false; t.needsUpdate = true; FXT.tridentW = t; }).catch(() => null);
   await Promise.all(Object.entries(FX_DATA).map(([k, d]) => loadImage(d.png).then(img => {
     const t = new THREE.Texture(img); t.magFilter = THREE.NearestFilter; t.minFilter = THREE.NearestFilter; t.generateMipmaps = false; t.needsUpdate = true; FXT[k] = t;
   }).catch(() => null)));
