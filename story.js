@@ -119,7 +119,7 @@ const STORY = {
 };
 
 /* =========================================================================
-   QUESTS — simple counters; 6 in the log, the top 3 pinned on the HUD
+   QUESTS — simple counters; 6 in the log, the top 2 pinned on the HUD
    ========================================================================= */
 const QUEST_MOBS = { brigand: 'Brigands', soldier: 'Soldiers', assassin: 'Assassins', shade: 'Black Fang Shades', revenant: 'Revenants', gwyllgi: 'Gwyllgi', mogall: 'Mogall', maelduin: 'Maelduin' };
 const QUESTS = {
@@ -184,14 +184,14 @@ const QUESTS = {
     if (q.reward.item) giveItem(rollItem(mlvlNow() + 2, G.hero.S.mf + (q.reward.item === 'rare' ? 250 : 120), q.reward.item === 'rare' ? 6 : 3), G.hero.x + 200, GROUND + 300);
     this.done++;
     SFX.levelUp(); UI.toast('QUEST COMPLETE', t.toUpperCase());
-    q.finished = true; this.dirty = true;
+    q.finished = true; this.dirty = true; $('questDot').hidden = false;
     const el = document.querySelector(`#questHud [data-q="${q.id}"]`); if (el) el.classList.add('done');
     setTimeout(() => { const i = this.log.indexOf(q); if (i >= 0) { this.log.splice(i, 1); this.log.push(this.make()); } this.dirty = true; this.render(true); save(true); }, 1500);
   },
   tick() { if (this.dirty) { this.dirty = false; this.render(); } },
   render(force) {
     const hud = $('questHud'); if (!hud) return;
-    const top = this.log.slice(0, 3);
+    const top = this.log.slice(0, 2);
     const key = top.map(q => q.id + ':' + q.prog + (q.finished ? 'f' : '')).join('|');
     if (key !== this.hudKey || force) {
       this.hudKey = key;
@@ -231,8 +231,7 @@ const _initUI = UI.init.bind(UI);
 UI.init = function () {
   _initUI();
   $('qte').addEventListener('click', () => { SFX.qte(); enterSecret(); QUESTS.event('riftEnter'); });
-  $('questHud').addEventListener('click', () => QUESTS.open());
-  $('questBtn').addEventListener('click', () => QUESTS.open());
+  $('questIcon').addEventListener('click', () => { QUESTS.open(); $('questDot').hidden = true; });
   $('qmClose').addEventListener('click', () => QUESTS.close());
   $('questModal').addEventListener('click', (e) => { if (e.target.id === 'questModal') QUESTS.close(); });
 };

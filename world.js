@@ -78,12 +78,17 @@ function heroJumpTo(h, tl, tgt) {
   if (tl > h.y + 10) {
     const p = platAt(tgt.x, tl) || PLATS.find(q => Math.abs(q.y - tl) < 3);
     const dy = tl - h.y, vy0 = Math.sqrt(2 * GRAV * (dy + 110)), T = vy0 / GRAV + Math.sqrt(2 * 110 / GRAV);
-    let lx = tgt.x - h.cls.range * .7; if (p) lx = Math.max(p.x0 + 50, Math.min(p.x1 - 60, lx));
-    vy = vy0; jvx = Math.max(-200, Math.min(1100, (lx - h.x) / T));
+    const side = tgt.x >= h.x ? 1 : -1; h.face = side;
+    let lx = tgt.x - side * h.cls.range * .7; if (p) lx = Math.max(p.x0 + 50, Math.min(p.x1 - 50, lx));
+    vy = vy0; jvx = Math.max(-1100, Math.min(1100, (lx - h.x) / T));
     h.ignorePlat = null;
   } else {
     h.ignorePlat = platAt(h.x, h.y);
-    vy = 480; jvx = Math.max(120, Math.min(800, (tgt.x - h.cls.range * .7 - h.x) / .8));
+    const side = tgt.x >= h.x ? 1 : -1; h.face = side;
+    const here = platAt(h.x, h.y), toEdge = here ? (side > 0 ? here.x1 + 40 - h.x : here.x0 - 40 - h.x) : 0;
+    let lx = tgt.x - side * h.cls.range * .7;
+    if (here && Math.sign(lx - h.x) === side && Math.abs(lx - h.x) < Math.abs(toEdge)) lx = h.x + toEdge;
+    vy = 480; jvx = Math.max(-800, Math.min(800, (lx - h.x) / .8));
   }
   h.air = true; h.vy = vy; h.jvx = jvx; h.mode = 'jump'; h.play('jump', true);
   SFX.jump();
@@ -135,7 +140,7 @@ function playSkillFx(h, i) {
   const list = (SKILL_FX[h.key] || [])[i]; if (!list) return;
   for (const e of list) later(e.d, () => {
     if (e.at === 'screen') { sheetFx(e.fx, 0, 0, { screen: true, ro: 9, alpha: e.alpha ?? 1, color: e.color, dy: 380, fade: .25 }); return; }
-    if (e.at === 'self') { sheetFx(e.fx, h.x + 20, GROUND + h.y, { scale: e.k, color: e.color, ro: 23 }); return; }
+    if (e.at === 'self') { sheetFx(e.fx, h.x + 20 * h.face, GROUND + h.y, { scale: e.k, color: e.color, ro: 23, flip: h.face < 0 }); return; }
     const tgts = e.at === 'all' ? allEnemies().filter(m => !m.dead && Math.abs(m.x - h.x) < 1100).slice(0, 6) : [h.target()].filter(Boolean);
     for (const m of tgts) sheetFx(e.fx, m.x, GROUND + (m.y || 0) - 10, { scale: e.k, color: e.color, ro: 63, flip: Math.random() < .5 });
   });

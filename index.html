@@ -648,9 +648,13 @@ button:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
 
 /* ---------- environment label, quests, banner, QTE, rift, dialogue ---------- */
 #tracker .envl{margin-top:3px;font-weight:900;font-size:12px;color:#d8f4ff;text-shadow:var(--stroke)}
-#questHud{position:absolute;right:10px;top:188px;width:206px;padding:6px 8px 8px;pointer-events:auto;cursor:pointer;text-align:right;background:linear-gradient(270deg,rgba(6,30,40,.78),rgba(6,30,40,0));border:0;border-right:3px solid var(--teal-hi);border-radius:0}
+#questHud{position:absolute;right:10px;top:188px;width:206px;padding:6px 8px 8px;pointer-events:none;text-align:right;background:linear-gradient(270deg,rgba(6,30,40,.78),rgba(6,30,40,0));border:0;border-right:3px solid var(--teal-hi);border-radius:0}
 #questHud .qh{font-weight:900;font-size:12px;letter-spacing:.08em;color:var(--gold);text-shadow:var(--stroke);text-transform:uppercase}
-#questHud .qh span{color:#fff}
+#questIcon{position:absolute;right:12px;bottom:362px;width:54px;height:54px;padding:0;pointer-events:auto;cursor:pointer;border-radius:12px;border:2px solid #07303d;
+  background:#0b3140;box-shadow:inset 0 0 0 1px rgba(160,240,255,.6),0 0 0 2px var(--gold-d),0 4px 10px rgba(0,0,0,.5);overflow:visible}
+#questIcon img{display:block;width:100%;height:100%;border-radius:10px}
+#questIcon:active{transform:scale(.94)}
+#questIcon i{position:absolute;right:-5px;top:-5px;width:14px;height:14px;border-radius:50%;background:var(--blood);border:2px solid #fff;animation:bdg 1.4s ease-in-out infinite}
 .qi{position:relative;padding:3px 0 5px;transition:opacity .5s,transform .5s}
 .qi b{display:block;font-weight:800;font-size:12px;color:#fff;text-shadow:var(--stroke);line-height:1.2}
 .qi span{font-weight:900;font-size:12px;color:var(--teal-hi);text-shadow:var(--stroke);font-variant-numeric:tabular-nums}
@@ -762,7 +766,8 @@ button:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
     </div>
     <div id="combo"><b id="comboN">0</b><span>HITS</span></div>
     <div id="lootFeed" aria-live="polite"></div>
-    <button type="button" id="questHud" aria-label="Open quest log"><div class="qh">Quests <span>›</span></div><div class="ql"></div></button>
+    <div id="questHud"><div class="qh">Quests</div><div class="ql"></div></div>
+    <button type="button" id="questIcon" aria-label="Quest log"><img src="sprites/quest_icon.png" alt=""><i id="questDot" hidden></i></button>
     <img id="fbanner" alt="">
     <button type="button" id="qte" hidden><span class="ring"></span><span class="qx"><b>ENTER THE RIFT</b><small>TAP NOW</small></span></button>
     <div id="dlg" hidden>
@@ -791,7 +796,6 @@ button:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
         <button class="mbtn frame" id="charBtn" type="button" aria-label="Character"><svg viewBox="0 0 24 24"><path d="M12 3c-3 0-5 2.2-5 5.2V12l2 2v3h6v-3l2-2V8.2C17 5.2 15 3 12 3z"/><path d="M9.5 9.5h1.8M12.7 9.5h1.8M12 14v3M8 21h8"/></svg><span>Stats</span><i class="badge" id="charBadge" hidden></i></button>
         <button class="mbtn frame" id="invBtn" type="button" aria-label="Inventory"><svg viewBox="0 0 24 24"><path d="M6 8h12l-1 12H7L6 8z"/><path d="M9 8V6a3 3 0 0 1 6 0v2M9.5 12h5"/></svg><span>Bag</span><i class="badge" id="invBadge" hidden></i></button>
         <button class="mbtn frame" id="skillBtn" type="button" aria-label="Skills"><svg viewBox="0 0 24 24"><path d="M12 3v5M12 8l-5 5M12 8l5 5M7 13v4M17 13v4"/><circle cx="12" cy="3.5" r="1.6"/><circle cx="7" cy="18.5" r="1.6"/><circle cx="17" cy="18.5" r="1.6"/><circle cx="12" cy="8.5" r="1.6"/></svg><span>Skills</span><i class="badge" id="skillBadge" hidden></i></button>
-        <button class="mbtn frame" id="questBtn" type="button" aria-label="Quests"><svg viewBox="0 0 24 24"><path d="M7 3h10a2 2 0 0 1 2 2v14l-3-2-2 2-2-2-2 2-2-2-3 2V5a2 2 0 0 1 2-2z"/><path d="M9 8h6M9 12h6"/></svg><span>Quests</span></button>
         <button class="mbtn frame" id="shopBtn" type="button" aria-label="Shop"><svg viewBox="0 0 24 24"><path d="M12 3l6 6-6 12-6-12 6-6z"/><path d="M6 9h12M12 3v18"/></svg><span>Shop</span></button>
         <div class="togs"><button class="tog" id="sndBtn" type="button">♪ On</button><button class="tog" id="spdBtn" type="button">×1</button><button class="tog on" id="autoBtn" type="button">Auto</button></div>
       </div>
