@@ -11,7 +11,8 @@ const GROUND = PANEL_W + 54;
 const GRAV = 2700;
 const HERO_SCALE = 0.58;
 const ROMAN = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII'];
-const XP_RATE = 6;           // demo pacing multiplier on monster experience
+const XP_RATE = 6;
+const TEMPO = 1.35;          // global combat tempo: animation speed multiplier for the heroes           // demo pacing multiplier on monster experience
 const SAVE_KEY = 'blazing-vanguard-v1';
 
 const CLASS = {
@@ -143,7 +144,7 @@ class Hero {
     this.belt = [[], [], [], []];
     this.skillCd = Array(8).fill(0); this.skillPtr = 0; this.queue = -1; this.sinceSkill = 0;
     this.skillLv = [1, 0, 0, 0, 0, 0, 0, 0]; this.passLv = [0, 0, 0, 0]; this.skillPts = 0;
-    this.mode = 'bench'; this.freeze = 0; this.x = 0; this.vx = 0; this.y = 0; this.vy = 0; this.air = false; this.jvx = 0; this.ignorePlat = null; this.face = 1; this.reviveT = 0; this.heals = []; this.invuln = 0; this.potCd = 0;
+    this.mode = 'bench'; this.freeze = 0; this.x = 0; this.vx = 0; this.y = 0; this.vy = 0; this.air = false; this.jvx = 0; this.ignorePlat = null; this.face = 1; this.limit = 0; this.reviveT = 0; this.heals = []; this.invuln = 0; this.potCd = 0;
     this.hitSets = new Map(); this.flashRed = 0;
     this.view.state.addListener({ event: (e, ev) => this.onEvent(ev.data.name) });
     this.S = computeStats(this, null, 0);
@@ -225,9 +226,9 @@ class Hero {
   }
   onEvent(n) {
     if (G.hero !== this) return;
-    if (n === 'move_combo' || n === 'move' || n === 'move_charge') this.vx = Math.max(this.vx, 420);
-    else if (n === 'move_combo_back' || n === 'slide_back' || n === 'move_charge_back') this.vx = -260;
-    else if (n === 'dash' || n === 'dash_attack') this.vx = 700;
+    if (n === 'move_combo' || n === 'move' || n === 'move_charge') this.vx = Math.max(this.vx, 700);
+    else if (n === 'move_combo_back' || n === 'slide_back' || n === 'move_charge_back') this.vx = -380;
+    else if (n === 'dash' || n === 'dash_attack') { this.vx = 1150; ghost(this, this.cls.color, .22, .45); }
     else if (n === 'vibranium_normal') shake(7, .16);
     else if (n === 'vibranium_hard') { shake(16, .28); G.hitstop = Math.max(G.hitstop, .05); }
     else if (n === 'vibranium_easy') shake(3, .1);
@@ -243,6 +244,7 @@ class Hero {
     shake(8, .14);
   }
   checkHits() {
+    if (this.cineStrike) return;
     if (this.mode !== 'combo' && this.mode !== 'skill' && this.mode !== 'tagin') return;
     const boxes = this.view.activeBoxes();
     if (!boxes.length) return;
@@ -255,7 +257,7 @@ class Hero {
       const set = this.hitSets.get(b.slot);
       const [x0, x1, y0, y1] = b.box;
       for (const e of allEnemies()) {
-        if (e.dead || set.has(e)) continue;
+        if (e.dead || set.has(e) || !canStrike(this, e)) continue;
         const hb = e.hurtBox();
         if (x1 < hb[0] || x0 > hb[1] || y1 < hb[2] || y0 > hb[3]) continue;
         set.add(e);
@@ -279,6 +281,7 @@ class Hero {
     if (src.elem) { const r = { fire: S.fr, cold: S.cr, ltng: S.lr, pois: S.pr }[src.elem.type] || 0; d += rnd(src.elem.lo, src.elem.hi) * (1 - r / 100); }
     d = Math.max(1, Math.round(d));
     this.life -= d; this.flashRed = 1; SFX.hurt();
+    const wasReady = this.limit >= 1; this.limit = Math.min(1, this.limit + d / (S.lifeMax * 1.1)); if (!wasReady && this.limit >= 1) UI.limitReady(this);
     if (d > S.lifeMax / 8 && Math.random() < .3) AUDIO.say(this.key, 'hurt');
     UI.number(this.x, hy + this.y, '-' + d, 'e');
     UI.hurtFlash();
@@ -347,8 +350,16 @@ class Hero {
     }
     let adt = dt;
     if (this.freeze > 0) { this.freeze -= dt; adt = 0; }
-    if (this.mode !== 'hurt') this.view.state.timeScale = S.speed;
+    if (this.mode !== 'hurt') this.view.state.timeScale = S.speed * TEMPO;
     this.view.sk.x = this.x; this.view.sk.y = GROUND + this.y; this.view.sk.scaleX = this.face;
+    if (this.mode === 'run' && !this.air) {
+      this.dustT = (this.dustT || 0) - dt;
+      if (this.dustT <= 0) {
+        this.dustT = .14;
+        spawnFx({ tex: TX.smoke, x: this.x - this.face * 40, y: GROUND + this.y + 12, vx: -this.face * 160, vy: 40, sx: 70, sy: 30, sx1: 170, sy1: 60, life: .35, color: G.secret ? 0x704050 : 0xe0d0b0, a0: .55, ro: 16 });
+        spawnFx({ tex: TX.streak, x: this.x - this.face * 90, y: GROUND + this.y + rnd(60, 200), rot: this.face > 0 ? Math.PI : 0, sx: rnd(90, 160), sy: 4, sx1: 20, sy1: 2, life: .2, color: new THREE.Color(this.cls.color), a0: .55, ro: 21 });
+      }
+    }
     this.view.update(adt);
     this.checkHits();
     this.think(dt);
@@ -375,6 +386,8 @@ class Hero {
     if (this.mana < Math.max(nextCost, S.manaMax * .25) && this.mana < S.manaMax * .5 && !this.heals.some(h => h.k === 'mp')) drinkType(this, 'mp');
   }
   think(dt) {
+    if (this.cineStrike) return;
+    if (this.limit >= 1 && G.auto && !this.air && this.mode !== 'appear' && this.mode !== 'tagin' && CINE.targets().length && (this.mode !== 'combo' && this.mode !== 'skill' || this.entry.trackTime >= this.nextAt)) { limitBreak(this); return; }
     const tt = this.entry.trackTime;
     if (this.mode === 'dead') {
       this.deathT -= dt;
@@ -419,13 +432,16 @@ class Hero {
     if (tgt && !same && Math.abs(tgt.x - this.x) < range + 380 && !tgt.dead && (this.mode === 'idle' || this.mode === 'run' || this.mode === 'combo' || this.mode === 'skill')) { const tl = levelOf(tgt); heroJumpTo(this, tl === null ? 0 : tl, tgt); return; }
     if (!tgt) this.face = 1;
     if (this.mode !== 'run') { this.mode = 'run'; this.play('move', true); }
+    const burst = tgt && same && dist > range && dist < range + 650;
+    const spd = (burst ? 1250 : 620) * this.S.run;
+    if (burst) { this.ghostT = (this.ghostT || 0) - dt; if (this.ghostT <= 0) { this.ghostT = .05; ghost(this, this.cls.color, .2, .4); } }
     if (this.face > 0) {
-      let nx = this.x + 380 * this.S.run * dt;
+      let nx = this.x + spd * dt;
       if (tgt && same) nx = Math.min(nx, tgt.left() - range + 10);
       for (const e of allEnemies()) if (!e.dead && sameLevel(this, e) && e.x < nx + 40 && e.x > this.x - 40) nx = Math.min(nx, Math.max(this.x, e.left() - 40));
       this.x = nx;
     } else {
-      let nx = this.x - 380 * this.S.run * dt;
+      let nx = this.x - spd * dt;
       if (tgt && same) nx = Math.max(nx, tgt.right() + range - 10);
       for (const e of allEnemies()) if (!e.dead && sameLevel(this, e) && e.x > nx - 40 && e.x < this.x + 40) nx = Math.max(nx, Math.min(this.x, e.right() + 40));
       this.x = nx;
@@ -760,7 +776,7 @@ class SpineMob {
     if (!this.boss) {
       // knockback: push away from the hero, heavy hits launch into a juggle
       const res = this.elite ? .55 : 1;
-      const s = this.side(); this.vx = s * Math.max(Math.abs(this.vx), (heavy ? 620 : 260) * res);
+      const s = this.side(); this.vx = s * Math.max(Math.abs(this.vx), (heavy ? 900 : 380) * res);
       const canAir = !this.D.fly && this.an.knockUp;
       if (canAir && (this.air || (launch && Math.random() < (this.elite ? .45 : 1)))) {
         const was = this.air;
@@ -840,7 +856,7 @@ class SpineMob {
         if (this.anim !== this.an.idle) this.play(this.an.idle, true);
         this.hopT += adt; if (this.hopT > 1.1) { this.hopT = 0; this.air = true; this.vy = 380; this.vx = -sd * 340; this.plat = null; this.floorY = 0; }
       } else if (sd > 0 ? this.x > stopX : this.x < stopX) {
-        this.x -= sd * (this.D.spd || 160) * adt;
+        this.x -= sd * (this.D.spd || 160) * 1.4 * adt;
         if (onPlat) this.x = Math.max(this.plat.x0 + 30, Math.min(this.plat.x1 - 30, this.x));
         if (this.anim !== this.an.move) this.play(this.an.move, true);
       }
@@ -848,7 +864,7 @@ class SpineMob {
     } else if (this.mode === 'atk') {
       if (tt >= this.nextAt) {
         if (this.D.ranged && !this.shot) this.fire();
-        if (this.chain > 0) { this.chain--; this.attack(true); } else { this.mode = 'walk'; this.atkCd = this.boss ? rnd(1.2, 2.2) : rnd(1.6, 2.6); }
+        if (this.chain > 0) { this.chain--; this.attack(true); } else { this.mode = 'walk'; this.atkCd = this.boss ? rnd(.9, 1.7) : rnd(1, 1.8); }
       }
     }
     const vis = !this.boss && (this.showHp > 0 || this.elite);
@@ -886,10 +902,10 @@ function allEnemies() { const a = G.mobs.slice(); if (G.boss && !G.boss.dead) a.
    COMBAT
    ========================================================================= */
 const ELEM_COL = { fire: 0xff7a30, cold: 0x7fb4ff, ltng: 0xffe24a };
-function dealDamage(hero, e, mult, heavy, isSkill) {
+function dealDamage(hero, e, mult, heavy, isSkill, sure) {
   const S = hero.S;
   const hb = e.hurtBox();
-  if (Math.random() > chanceToHit(S.ar * (isSkill ? 1.5 : 1), e.def, hero.level, e.mlvl)) {
+  if (!sure && Math.random() > chanceToHit(S.ar * (isSkill ? 1.5 : 1), e.def, hero.level, e.mlvl)) {
     UI.number(e.x + rnd(-30, 30), hb[3] + 20, 'MISS', 'm'); return;
   }
   let d = rnd(S.min, S.max) * mult, crit = false, cb = false, elemK = null, el = 0;
@@ -985,7 +1001,7 @@ function dropCoins(x, y, n, value) {
 function spawnWave() {
   G.waveSpawned = true;
   const lead = G.hero;
-  const baseX = Math.max(G.camX + VW + 80, lead.x + 700);
+  const baseX = Math.max(G.camX + VW + 40, lead.x + 600);
   if (G.wave === G.wavesPerFloor) {
     G.boss = makeBoss(baseX + 120); SFX.boss(); STORY.trigger('boss');
     UI.showBoss(true);
@@ -1017,7 +1033,7 @@ function waveCleared() {
     QUESTS.event('floor', G.floor); STORY.trigger('floor');
   } else G.wave++;
   const h = G.hero; h.life = Math.min(h.S.lifeMax, h.life + h.S.lifeMax * .2);
-  G.waveSpawned = false; G.clearT = 1.1;
+  G.waveSpawned = false; G.clearT = .45;
   UI.dirtyAll(); save();
 }
 function partyWipe() {
@@ -1085,6 +1101,7 @@ function frame(now) {
   const real = Math.min(.05, (now - last) / 1000); last = now;
   let dt = real * G.speed;
   if (G.hitstop > 0) { G.hitstop -= real; dt *= .12; }
+  CINE.tick(real); dt *= CINE.slow;
   let zoom = 1, focus = null;
   if (G.slowmo) {
     const sm = G.slowmo; sm.t -= real;
@@ -1111,7 +1128,7 @@ function frame(now) {
   for (let i = G.mobs.length - 1; i >= 0; i--) { catchUp(G.mobs[i], lead); if (G.mobs[i].update(dt, lead)) { G.mobs[i].dispose(); G.mobs.splice(i, 1); } }
   if (G.boss) catchUp(G.boss, lead);
   if (G.boss && G.boss.update(dt, lead)) { G.boss.dispose(); G.boss = null; UI.showBoss(false); }
-  updateFx(dt); updateSheetFx(dt); clearPlats(false);
+  updateFx(dt); updateSheetFx(dt); updateGhosts(dt); clearPlats(false);
   if (G.comboT > 0) { G.comboT -= real; if (G.comboT <= 0) G.combo = 0; }
   const want = lead.x - 500;
   G.camX += (want - G.camX) * Math.min(1, real * 4);

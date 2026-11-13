@@ -16,6 +16,7 @@ Static web build (no build step). Open `index.html` through any static server.
 - `engine.js`, `sprite.js`, `spritedata.js` — renderer + sprite animation data
 - `audio.js` — synthesized BGM/SFX + Japanese voice lines (browser speech)
 - `world.js` — platforms, rift portal + secret level, day/night + weather, skill FX
+- `cine.js` — Limit Break finishers with cutscenes, afterimages
 - `story.js` — dialogue events and quests
 - `fxdata.js` — spell animation metadata; `audio/` — music
 - `febg.js` — pixel-art battlefield backdrop

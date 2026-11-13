@@ -55,8 +55,11 @@ function platAt(x, y) { for (const p of PLATS) if (Math.abs(p.y - y) < 3 && x >=
 function landingFor(x, prevY, y, ignore) { let best = null; for (const p of PLATS) if (p !== ignore && x >= p.x0 - 8 && x <= p.x1 + 8 && prevY >= p.y - 1 && y <= p.y && (!best || p.y > best.y)) best = p; return best; }
 function floorBelow(x, y) { let best = 0; for (const p of PLATS) if (x >= p.x0 && x <= p.x1 && p.y <= y + 2 && p.y > best) best = p.y; return best; }
 /* level an enemy stands on (null = flying, reachable from anywhere close) */
-function levelOf(e) { if (e.D && e.D.fly) return null; if (e.air) return e.y; return e.floorY || 0; }
-function sameLevel(h, e) { const l = levelOf(e); if (l === null) return Math.abs(h.y - (e.y || 0)) < 320; return Math.abs(l - h.y) < 70 || (e.air && Math.abs(e.y - h.y) < 260); }
+function levelOf(e) { if (e.D && e.D.fly) return null; return e.floorY || 0; }
+/* same footing: an enemy knocked into the air still counts by the ledge it stands on, so a hero below never "juggles" it from the ground */
+function sameLevel(h, e) { if (e.D && e.D.fly) return Math.abs(h.y - (e.y || 0)) < 320; return Math.abs((e.floorY || 0) - h.y) < 70; }
+/* can a swing from the hero's footing connect with this enemy? */
+function canStrike(h, e) { if (e.D && e.D.fly) return Math.abs(h.y - (e.y || 0)) < 360; return Math.abs((e.floorY || 0) - h.y) < 90; }
 /* lay out 1–2 ledges ahead for a wave; returns them so mobs can be placed on top */
 function makeWavePlats(baseX) {
   clearPlats(false);

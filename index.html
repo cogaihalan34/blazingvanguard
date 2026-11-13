@@ -727,6 +727,68 @@ button:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
 @keyframes pswap{from{transform:rotate(45deg) scale(.6);opacity:0}to{transform:rotate(45deg) scale(1);opacity:1}}
 #sheet{background-image:linear-gradient(180deg,rgba(9,40,54,.94),rgba(4,20,28,.97)),url(sprites/prep_bg.png)!important;background-size:auto,1028px 320px;background-blend-mode:normal}
 #loading{background:linear-gradient(180deg,rgba(4,19,27,.6),rgba(4,19,27,.9)),url(sprites/prep_bg.png) center/cover!important;image-rendering:pixelated}
+
+/* ---------- finisher cutscene ---------- */
+#cine{position:absolute;inset:0;z-index:7;pointer-events:none;overflow:hidden}
+#cine .cn-bg{position:absolute;inset:0;opacity:0}
+.cn-wind .cn-bg{background:radial-gradient(120% 70% at 70% 45%,#2fd08a 0,#0b5a46 35%,#021a16 75%)}
+.cn-fire .cn-bg{background:radial-gradient(120% 70% at 30% 45%,#ffb040 0,#a8301a 35%,#1a0404 75%)}
+#cine .cn-lines{position:absolute;inset:-20%;opacity:0;mix-blend-mode:screen}
+.cn-wind .cn-lines{background:repeating-linear-gradient(-8deg,transparent 0 22px,rgba(200,255,230,.55) 22px 24px,transparent 24px 61px,rgba(120,255,190,.35) 61px 62px);animation:cnwind .35s linear infinite}
+.cn-fire .cn-lines{background:radial-gradient(3px 3px at 20% 80%,#ffd080,transparent),radial-gradient(2px 2px at 60% 70%,#fff0b0,transparent),radial-gradient(3px 3px at 80% 90%,#ff9040,transparent),radial-gradient(2px 2px at 40% 95%,#ffe0a0,transparent),repeating-linear-gradient(80deg,transparent 0 40px,rgba(255,140,60,.25) 40px 42px);background-size:300px 300px,260px 260px,340px 340px,280px 280px,auto;animation:cnember .6s linear infinite}
+@keyframes cnwind{to{transform:translateX(-120px)}}
+@keyframes cnember{to{background-position:0 -300px,0 -260px,0 -340px,0 -280px,0 0}}
+#cine .cn-bar{position:absolute;left:0;right:0;height:90px;background:#000;transform:scaleY(0)}
+#cine .cn-bar.t{top:0;transform-origin:top}#cine .cn-bar.b{bottom:0;transform-origin:bottom}
+#cine .cn-art{position:absolute;max-width:none;height:118%;bottom:-6%;opacity:0;filter:drop-shadow(0 0 30px rgba(255,255,255,.35))}
+.cn-wind .cn-art{right:-12%}.cn-fire .cn-art{left:-14%}
+#cine .cn-eyes{position:absolute;left:0;right:0;top:38%;height:110px;background-repeat:no-repeat;opacity:0;border-top:3px solid #fff;border-bottom:3px solid #fff;box-shadow:0 0 0 4px rgba(0,0,0,.6),0 0 30px rgba(255,255,255,.4)}
+#cine .cn-title{position:absolute;left:0;right:0;top:58%;text-align:center;opacity:0}
+#cine .cn-title b{display:block;font-family:var(--f-head);font-weight:900;font-style:italic;font-size:44px;letter-spacing:.02em;color:#fff;text-shadow:var(--stroke),0 0 24px var(--cn-glow,#80ffc0)}
+#cine .cn-title small{display:block;margin-top:4px;font-weight:900;font-size:13px;letter-spacing:.3em;color:var(--gold);text-shadow:var(--stroke)}
+.cn-fire{--cn-glow:#ff9040}
+#cine .cn-flash{position:absolute;inset:0;background:#fff;opacity:0}
+#cine.run .cn-bg{animation:cnfade 1.6s ease forwards}
+#cine.run .cn-lines{opacity:1}
+#cine.run .cn-bar{animation:cnbar .25s ease-out forwards}
+.cn-wind.run .cn-art{animation:cnartR 1.6s cubic-bezier(.2,.9,.3,1) forwards}
+.cn-fire.run .cn-art{animation:cnartU 1.6s cubic-bezier(.2,.9,.3,1) forwards}
+#cine.run .cn-eyes{animation:cneyes 1.6s ease forwards}
+#cine.run .cn-title{animation:cntitle 1.6s ease forwards}
+#cine.out{animation:cnout .45s ease forwards}
+#cine.out .cn-flash{animation:cnflash .45s ease forwards}
+@keyframes cnfade{0%{opacity:0}12%{opacity:1}100%{opacity:1}}
+@keyframes cnbar{to{transform:scaleY(1)}}
+@keyframes cnartR{0%{opacity:0;transform:translateX(40%)}18%{opacity:1;transform:translateX(0)}45%{opacity:1;transform:translateX(-3%)}55%{opacity:.25}100%{opacity:.25;transform:translateX(-6%)}}
+@keyframes cnartU{0%{opacity:0;transform:translateY(30%)}18%{opacity:1;transform:translateY(0)}22%{transform:translate(4px,-3px)}26%{transform:translate(-4px,2px)}30%{transform:none}45%{opacity:1}55%{opacity:.25}100%{opacity:.25;transform:translateY(-3%)}}
+@keyframes cneyes{0%,40%{opacity:0;transform:scaleY(0)}48%{opacity:1;transform:scaleY(1)}90%{opacity:1}100%{opacity:1}}
+@keyframes cntitle{0%,55%{opacity:0;transform:scale(1.6)}64%{opacity:1;transform:scale(1)}100%{opacity:1;transform:scale(1.04)}}
+@keyframes cnout{0%{opacity:1}100%{opacity:0}}
+@keyframes cnflash{0%{opacity:.95}100%{opacity:0}}
+
+/* ---------- Limit Break button (triangle, fills bottom-up, blue flame when ready) ---------- */
+#limitBtn{position:absolute;left:12px;bottom:358px;width:74px;height:70px;padding:0;border:0;background:none;pointer-events:auto;cursor:pointer;--fill:0}
+#limitBtn .lb-tri{position:absolute;inset:0 0 6px;clip-path:polygon(50% 0,100% 100%,0 100%);background:#f6d77c}
+#limitBtn .lb-tri::before{content:'';position:absolute;inset:0;clip-path:polygon(50% 7%,94% 96%,6% 96%);background:linear-gradient(180deg,#0b3140,#041219)}
+#limitBtn .lb-fill{position:absolute;left:0;right:0;bottom:0;height:calc(var(--fill)*100%);clip-path:polygon(50% 7%,94% 96%,6% 96%);
+  background:linear-gradient(180deg,#bff6ff,#3ab8f0 40%,#1556c8);transition:height .25s;box-shadow:inset 0 3px 0 rgba(255,255,255,.6)}
+#limitBtn .lb-fill{clip-path:none;-webkit-mask:linear-gradient(#000,#000);inset:auto 0 0 0}
+#limitBtn .lb-tri img{position:absolute;left:50%;bottom:7%;width:46%;transform:translateX(-50%);mix-blend-mode:screen;opacity:.75;filter:hue-rotate(160deg) saturate(1.4)}
+#limitBtn .lb-pct{position:absolute;left:0;right:0;bottom:-10px;text-align:center;font-weight:900;font-size:11px;color:#fff;text-shadow:var(--stroke)}
+#limitBtn .lb-flame{position:absolute;left:-14px;right:-14px;top:-30px;bottom:-4px;opacity:0;pointer-events:none;
+  background:radial-gradient(40% 55% at 50% 70%,rgba(120,220,255,.9),transparent 70%),radial-gradient(18% 40% at 30% 55%,rgba(80,170,255,.85),transparent 70%),radial-gradient(18% 45% at 70% 50%,rgba(140,230,255,.85),transparent 70%),radial-gradient(12% 35% at 50% 25%,rgba(220,250,255,.9),transparent 70%);
+  filter:blur(2px);mix-blend-mode:screen}
+#limitBtn.ready{animation:lbbob 1s ease-in-out infinite}
+#limitBtn.ready .lb-tri{background:linear-gradient(180deg,#ffffff,#9fe8ff);box-shadow:0 0 0 2px #fff}
+#limitBtn.ready .lb-fill{background:linear-gradient(180deg,#ffffff,#7fe6ff 30%,#2a8cf0 70%,#1a4ad0);animation:lbpulse .6s ease-in-out infinite}
+#limitBtn.ready .lb-tri img{opacity:1}
+#limitBtn.ready .lb-flame{opacity:1;animation:lbflame .22s steps(2) infinite}
+#limitBtn.ready .lb-pct{color:#bff6ff;font-size:12px;letter-spacing:.08em}
+#limitBtn.ready{filter:drop-shadow(0 0 10px #4ab8ff) drop-shadow(0 0 22px #2a6cff)}
+@keyframes lbbob{50%{transform:translateY(-4px) scale(1.06)}}
+@keyframes lbpulse{50%{filter:brightness(1.35)}}
+@keyframes lbflame{0%{transform:scaleY(1) translateY(0)}50%{transform:scaleY(1.12) translateY(-4px) scaleX(.95)}}
+@media (prefers-reduced-motion: reduce){#limitBtn.ready,#limitBtn.ready .lb-flame,#limitBtn.ready .lb-fill{animation:none}}
 /* spread the plate rows over the full 352px panel */
 #panel{gap:11px}
 .plate{margin-top:14px;height:42px}
@@ -767,6 +829,7 @@ button:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
     <div id="combo"><b id="comboN">0</b><span>HITS</span></div>
     <div id="lootFeed" aria-live="polite"></div>
     <div id="questHud"><div class="qh">Quests</div><div class="ql"></div></div>
+    <button type="button" id="limitBtn" aria-label="Limit Break"><span class="lb-flame"></span><span class="lb-tri"><span class="lb-fill"></span><img src="sprites/limit_icon.png" alt=""></span><span class="lb-pct" id="limitPct">0%</span></button>
     <button type="button" id="questIcon" aria-label="Quest log"><img src="sprites/quest_icon.png" alt=""><i id="questDot" hidden></i></button>
     <img id="fbanner" alt="">
     <button type="button" id="qte" hidden><span class="ring"></span><span class="qx"><b>ENTER THE RIFT</b><small>TAP NOW</small></span></button>
@@ -807,6 +870,9 @@ button:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
     <div id="tip" hidden></div>
     <div id="questModal" hidden><div class="qm frame"><div class="qm-head"><b>Quest Log</b><button type="button" id="qmClose" aria-label="Close">✕</button></div><div id="qmBody"></div></div></div>
     <div id="rift"></div>
+    <div id="cine" hidden><div class="cn-bg"></div><div class="cn-lines"></div><div class="cn-bar t"></div><div class="cn-bar b"></div>
+      <img id="cnArt" class="cn-art" alt=""><div id="cnEyes" class="cn-eyes"></div>
+      <div class="cn-title"><b id="cnTitle"></b><small id="cnSub"></small></div><div class="cn-flash"></div></div>
     <div id="gacha" hidden><div class="gx-title">Reliquary</div><div class="gx-sub" id="gxSub"></div><div class="gx-grid" id="gxGrid"></div><button type="button" class="tbtn" id="gxClose">Collect</button></div>
   </div>
   <div id="loading"><span class="lt">Blazing Vanguard</span><small id="loadTxt">unrolling the map…</small></div>
@@ -825,6 +891,7 @@ button:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
 <script src="audio.js"></script>
 <script src="world.js"></script>
 <script src="story.js"></script>
+<script src="cine.js"></script>
 <script src="game.js"></script>
 
 </body></html>

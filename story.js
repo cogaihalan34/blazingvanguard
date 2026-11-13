@@ -188,7 +188,7 @@ const QUESTS = {
     const el = document.querySelector(`#questHud [data-q="${q.id}"]`); if (el) el.classList.add('done');
     setTimeout(() => { const i = this.log.indexOf(q); if (i >= 0) { this.log.splice(i, 1); this.log.push(this.make()); } this.dirty = true; this.render(true); save(true); }, 1500);
   },
-  tick() { if (this.dirty) { this.dirty = false; this.render(); } },
+  tick() { if (this.dirty) { this.dirty = false; this.render(); } UI.limitRender(); },
   render(force) {
     const hud = $('questHud'); if (!hud) return;
     const top = this.log.slice(0, 2);
@@ -217,6 +217,15 @@ const QUESTS = {
    HUD additions
    ========================================================================= */
 Object.assign(UI, {
+  limitRender(force) {
+    const h = G.hero; if (!h) return;
+    const k = Math.min(1, h.limit || 0), key = (k * 100 | 0) + (h.key);
+    if (!force && key === this._lk) return; this._lk = key;
+    const b = $('limitBtn'); b.style.setProperty('--fill', k.toFixed(3));
+    b.classList.toggle('ready', k >= 1); b.setAttribute('aria-label', k >= 1 ? 'Limit Break ready' : `Limit ${Math.round(k * 100)}%`);
+    $('limitPct').textContent = k >= 1 ? 'READY' : Math.floor(k * 100) + '%';
+  },
+  limitReady(h) { if (G.hero === h) { SFX.qte(); this.toastSmall(h.cls.name + "'s Limit Break is ready!"); } },
   qteShow(on) {
     const q = $('qte'); q.hidden = !on;
     if (on) { SFX.qte(); q.classList.remove('pop'); void q.offsetWidth; q.classList.add('pop'); if (!this._seenPortal) { this._seenPortal = true; STORY.trigger('portal', true); } }
@@ -232,6 +241,7 @@ UI.init = function () {
   _initUI();
   $('qte').addEventListener('click', () => { SFX.qte(); enterSecret(); QUESTS.event('riftEnter'); });
   $('questIcon').addEventListener('click', () => { QUESTS.open(); $('questDot').hidden = true; });
+  $('limitBtn').addEventListener('click', () => { if (!limitBreak(G.hero) && G.hero.limit < 1) this.toastSmall('Limit gauge charges as you take damage'); });
   $('qmClose').addEventListener('click', () => QUESTS.close());
   $('questModal').addEventListener('click', (e) => { if (e.target.id === 'questModal') QUESTS.close(); });
 };
