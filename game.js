@@ -76,7 +76,14 @@ const POTIONS = {
 const stageEl = document.getElementById('stage');
 const canvas = document.getElementById('gl');
 const uiEl = document.getElementById('ui');
-const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false, powerPreference: 'high-performance' });
+/* ---------- performance profile: phones are fill-rate bound, so render fewer pixels, no MSAA, cap at 60fps,
+   and let a governor drop/raise resolution from the measured frame time ---------- */
+const PERF = (() => {
+  const mobile = (window.matchMedia && matchMedia('(pointer: coarse)').matches) || /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+  const cap = mobile ? 1.5 : 2;
+  return { mobile, cap, min: mobile ? .75 : 1, dpr: Math.min(window.devicePixelRatio || 1, cap), ema: 1 / 60, slowT: 0, fastT: 0, coolT: 0, minFrame: 1000 / 72, lastDraw: 0 };
+})();
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: !PERF.mobile, alpha: false, powerPreference: 'high-performance' });
 renderer.setClearColor(0x07050a, 1);
 const scene = new THREE.Scene();
 let VH = 1920, stageW = 540, stageH = 960;
@@ -89,7 +96,7 @@ function layout() {
   stageW = w; stageH = h;
   stageEl.style.width = w + 'px'; stageEl.style.height = h + 'px';
   stageEl.style.top = Math.round((ih - h) / 2) + 'px';
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer.setPixelRatio(PERF.dpr);
   renderer.setSize(w, h, false);
   VH = VW * h / w;
   camera.top = VH; camera.bottom = 0; camera.right = VW; camera.left = 0; camera.updateProjectionMatrix();
@@ -1110,8 +1117,31 @@ function starterKit(h) {
 let last = performance.now();
 /* the loop never dies on a single bad frame: log it, drop any cutscene, keep rendering */
 let frameErrs = 0;
+function perfGovern(now) {
+  const d = Math.min(.1, (now - (PERF.lastDraw || now)) / 1000); PERF.lastDraw = now;
+  if (!d || G.title || document.hidden) return;
+  PERF.ema += (d - PERF.ema) * .08; PERF.coolT -= d;
+  if (PERF.ema > 1 / 45) { PERF.slowT += d; PERF.fastT = 0; } else if (PERF.ema < 1 / 57) { PERF.fastT += d; PERF.slowT = 0; } else { PERF.slowT = PERF.fastT = 0; }
+  const want = Math.min(PERF.cap, window.devicePixelRatio || 1);
+  let nd = PERF.dpr;
+  if (PERF.slowT > 1.5 && PERF.dpr > PERF.min) nd = Math.max(PERF.min, PERF.dpr - .25);
+  else if (PERF.fastT > 6 && PERF.coolT <= 0 && PERF.dpr < want) nd = Math.min(want, PERF.dpr + .25);
+  if (nd !== PERF.dpr) {
+    if (nd < PERF.dpr) PERF.coolT = 12;           // after a downgrade, wait before trying to climb back
+    PERF.dpr = nd; PERF.slowT = PERF.fastT = 0; PERF.ema = 1 / 60;
+    renderer.setPixelRatio(nd); renderer.setSize(stageW, stageH, false);
+  }
+}
+/* zero-opacity full-screen overlays (dim, flash, night, fog…) still cost a full-screen fill each — skip them */
+const _fadeMats = new Set();
+function cullFaded() {
+  if (!_fadeMats.size || (G.frameN = (G.frameN || 0) + 1) % 120 === 1) scene.traverse(o => { const m = o.material; if (m && !Array.isArray(m) && m.transparent && !m.isShaderMaterial) _fadeMats.add(m); });
+  for (const m of _fadeMats) m.visible = m.opacity > .004;
+}
 function frame(now) {
   requestAnimationFrame(frame);
+  if (PERF.lastDraw && now - PERF.lastDraw < PERF.minFrame) return;   // 120Hz screens: draw every other refresh
+  perfGovern(now);
   try { frameBody(now); frameErrs = 0; }
   catch (err) {
     if (frameErrs++ < 5) console.error(err);
@@ -1121,7 +1151,7 @@ function frame(now) {
 }
 function frameBody(now) {
   const real = Math.min(.05, (now - last) / 1000); last = now;
-  if (G.title) { BG.update(G.camX, real * .3, G.time += real * .3); WEATHER.update(G.camX, real * .3, real); renderer.render(scene, camera); return; }
+  if (G.title) return;   // the title art covers the whole stage — nothing to draw underneath
   let dt = real * G.speed;
   if (G.hitstop > 0) { G.hitstop -= real; dt *= .12; }
   try { CINE.tick(real); } catch (err) { console.error(err); CINE.abort(); }
@@ -1178,6 +1208,7 @@ function frameBody(now) {
   WEATHER.update(G.camX, dt, real);
   CUT.update(real);
   UI.tick();
+  cullFaded();
   renderer.render(scene, camera);
   CUT.render();
   save();

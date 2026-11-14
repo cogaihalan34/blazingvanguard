@@ -1,4 +1,18 @@
-<!doctype html><html><head><meta charset=utf8><meta name="theme-color" content="#04131b"><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<!doctype html><html><head><meta charset=utf8><meta name="theme-color" content="#04131b"><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}
+/* ---------- performance: keep HUD animations on the compositor (transform/opacity only),
+   no backdrop-filter / blend modes over the live WebGL canvas (each forces a re-composite every frame on phones) ---------- */
+#limitBtn .lb-dim{backdrop-filter:none!important;-webkit-backdrop-filter:none!important;background:rgba(4,10,16,.82)}
+#limitBtn .lb-flame,#limitBtn .lb-tri img{mix-blend-mode:normal!important}
+#limitBtn .lb-flame{filter:none!important;will-change:transform,opacity}
+#limitBtn.ready,.tagcard.ready,.tagcard.ready em,.tagcard.ready img{will-change:transform}
+.tagcard.ready::after{inset:-2px!important;animation-name:tagring2!important;will-change:transform,opacity}
+@keyframes tagring2{0%{opacity:.9;transform:scale(1)}100%{opacity:0;transform:scale(1.12,1.3)}}
+.tagcard.ready img{box-shadow:0 0 0 3px #fff,0 0 12px var(--gold);animation-name:tagpulse2!important}
+@keyframes tagpulse2{50%{transform:scale(1.06)}}
+#lvup .lv-word::after{mix-blend-mode:normal!important}
+#limitBtn.ready .lb-fill{animation-name:lbpulse2!important}
+@keyframes lbpulse2{50%{opacity:.8}}
+</style></head><body>
 <title>Blazing Blade</title><link rel="preload" as="image" href="sprites/title_art.webp">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800;900&family=Alegreya+Sans:wght@500;700;800&display=swap">
@@ -1041,19 +1055,19 @@ var iw=innerWidth,ih=innerHeight,w=iw,h=ih;if(w/h>9/16)w=Math.round(h*9/16);if(h
 st.style.width=w+'px';st.style.height=h+'px';st.style.top=Math.round((ih-h)/2)+'px';ui.style.height=(540*h/w)+'px';ui.style.transform='scale('+(w/540)+')';})();
 </script>
 <script src="vendor/three.min.js"></script>
-<script src="spine-core.js?v=1794611718"></script>
-<script src="engine.js?v=1794611718"></script>
-<script src="d2.js?v=1794611718"></script>
-<script src="skillicons.js?v=1794611718"></script>
-<script src="ui.js?v=1794611718"></script>
-<script src="spritedata.js?v=1794611718"></script>
-<script src="sprite.js?v=1794611718"></script>
-<script src="fxdata.js?v=1794611718"></script>
-<script src="febg.js?v=1794611718"></script>
-<script src="audio.js?v=1794611718"></script>
-<script src="world.js?v=1794611718"></script>
-<script src="story.js?v=1794611718"></script>
-<script src="cine.js?v=1794611718"></script>
-<script src="game.js?v=1794611718"></script>
+<script src="spine-core.js?v=1794627890"></script>
+<script src="engine.js?v=1794627890"></script>
+<script src="d2.js?v=1794627890"></script>
+<script src="skillicons.js?v=1794627890"></script>
+<script src="ui.js?v=1794627890"></script>
+<script src="spritedata.js?v=1794627890"></script>
+<script src="sprite.js?v=1794627890"></script>
+<script src="fxdata.js?v=1794627890"></script>
+<script src="febg.js?v=1794627890"></script>
+<script src="audio.js?v=1794627890"></script>
+<script src="world.js?v=1794627890"></script>
+<script src="story.js?v=1794627890"></script>
+<script src="cine.js?v=1794627890"></script>
+<script src="game.js?v=1794627890"></script>
 
 </body></html>

@@ -127,6 +127,12 @@ const DOLL = { // px in the 516-wide paperdoll, 38px cells (D2 layout)
 };
 const CELL = 46, DCELL = 38;
 
+/* change-only DOM writers: rewriting identical text/HTML/styles every frame forces style+layout work, which is what hurts on phones */
+function sTe(e, v) { v = String(v); if (e._t !== v) { e._t = v; e.textContent = v; } }
+function sT(id, v) { sTe($(id), v); }
+function sH(id, v) { const e = $(id); if (e._h !== v) { e._h = v; e.innerHTML = v; } }
+function sW(id, v) { const e = $(id); if (e._w !== v) { e._w = v; e.style.width = v; } }
+function sHid(id, v) { const e = $(id); if (e.hidden !== !!v) e.hidden = !!v; }
 const UI = {
   portraits: {}, icons: {}, figures: {}, dirty: { inv: true, char: true, belt: true, grid: true }, sheet: null, viewIdx: 0, sel: null, resetArm: 0,
   dirtyAll() { this.dirty.inv = this.dirty.char = this.dirty.belt = this.dirty.grid = true; this.dirty.waves = this.dirty.shop = true; },
@@ -203,43 +209,43 @@ const UI = {
     if (this.dirty.grid) { this.renderGrid(); this.dirty.grid = false; }
     if (this.dirty.waves) { this.renderWaves(); this.dirty.waves = false; }
     if (this.dirty.belt) { this.renderBelt(); this.dirty.belt = false; }
-    $('lifeFill').style.width = (100 * h.life / S.lifeMax).toFixed(1) + '%';
-    $('manaFill').style.width = (100 * h.mana / S.manaMax).toFixed(1) + '%';
-    $('lifeTx').innerHTML = `${Math.ceil(h.life)}<small> / ${S.lifeMax}</small>`;
-    $('manaTx').innerHTML = `${Math.floor(h.mana)}<small> / ${S.manaMax}</small>`;
-    $('heroLv').textContent = h.level;
-    $('xpFill').style.width = (h.xpFrac() * 100).toFixed(1) + '%';
+    sW('lifeFill', (100 * h.life / S.lifeMax).toFixed(1) + '%');
+    sW('manaFill', (100 * h.mana / S.manaMax).toFixed(1) + '%');
+    sH('lifeTx', `${Math.ceil(h.life)}<small> / ${S.lifeMax}</small>`);
+    sH('manaTx', `${Math.floor(h.mana)}<small> / ${S.manaMax}</small>`);
+    sT('heroLv', h.level);
+    sW('xpFill', (h.xpFrac() * 100).toFixed(1) + '%');
     for (let i = 0; i < 8; i++) {
       const s = $('slot' + i), locked = !h.learned(i);
       const cd = h.skillCd[i], mx = h.cls.skillCd[i];
-      s.style.setProperty('--cd', cd > 0 ? (cd / mx).toFixed(3) : 0);
-      s.querySelector('.cdt').textContent = locked ? (h.level < h.cls.skillReq[i] ? 'Lv ' + h.cls.skillReq[i] : h.skillPts > 0 && nodeInfo(h, { kind: 'skill', i }).can ? 'Learn' : '—') : cd > 0 ? Math.ceil(cd) : '';
+      const cv = cd > 0 ? (cd / mx).toFixed(2) : '0'; if (s._cd !== cv) { s._cd = cv; s.style.setProperty('--cd', cv); }
+      sTe(s._cdt || (s._cdt = s.querySelector('.cdt')), locked ? (h.level < h.cls.skillReq[i] ? 'Lv ' + h.cls.skillReq[i] : h.skillPts > 0 && nodeInfo(h, { kind: 'skill', i }).can ? 'Learn' : '—') : cd > 0 ? Math.ceil(cd) : '');
       s.classList.toggle('locked', locked);
-      s.querySelector('.mc').textContent = h.cost(i); s.classList.toggle('nomana', !locked && h.mana < h.cost(i));
+      sTe(s._mc || (s._mc = s.querySelector('.mc')), h.cost(i)); s.classList.toggle('nomana', !locked && h.mana < h.cost(i));
       s.classList.toggle('cast', h.mode === 'skill' && h.skillIdx === i);
       s.classList.toggle('q', h.queue === i);
       s.classList.toggle('next', G.auto && h.skillPtr === i && !locked);
     }
     const p = G.partner;
-    $('tagHp').style.width = (100 * p.life / p.S.lifeMax).toFixed(1) + '%';
-    $('tagSub').textContent = p.reviveT > 0 ? `Recovering ${Math.ceil(p.reviveT)}s` : `Level ${p.level}`;
+    sW('tagHp', (100 * p.life / p.S.lifeMax).toFixed(1) + '%');
+    sT('tagSub', p.reviveT > 0 ? `Recovering ${Math.ceil(p.reviveT)}s` : `Level ${p.level}`);
     const tcd = Math.max(G.tagCd, p.reviveT > 0 ? 1 : 0);
     $('tagBtn').classList.toggle('cool', tcd > 0);
     $('tagBtn').classList.toggle('ready', tcd <= 0 && !G.partner.dead && !G.hero.cineStrike);
-    $('tagCd').textContent = G.tagCd > 0 ? Math.ceil(G.tagCd) : '';
-    $('goldTxt').textContent = fmt(G.gold);
+    sT('tagCd', G.tagCd > 0 ? Math.ceil(G.tagCd) : '');
+    sT('goldTxt', fmt(G.gold));
     const cut = G.time - 5; while (G.dmgLog.length && G.dmgLog[0][0] < cut) G.dmgLog.shift();
-    $('dpsTxt').textContent = fmtS(G.dmgLog.reduce((s, d) => s + d[1], 0) / 5);
+    sT('dpsTxt', fmtS(G.dmgLog.reduce((s, d) => s + d[1], 0) / 5));
     const pts = G.party.reduce((s, x) => s + x.points, 0);
-    $('charBadge').hidden = !pts; $('charBadge').textContent = pts;
+    sHid('charBadge', !pts); sT('charBadge', pts);
     const spts = G.party.reduce((s2, x) => s2 + x.skillPts, 0);
-    $('skillBadge').hidden = !spts; $('skillBadge').textContent = spts;
-    $('gemTxt').textContent = fmt(G.gems);
-    $('invBadge').hidden = !G.newItems; $('invBadge').textContent = G.newItems;
+    sHid('skillBadge', !spts); sT('skillBadge', spts);
+    sT('gemTxt', fmt(G.gems));
+    sHid('invBadge', !G.newItems); sT('invBadge', G.newItems);
     if (G.boss) {
       const k = Math.max(0, G.boss.hp / G.boss.maxHp);
-      $('bossFill').style.width = (k * 100).toFixed(2) + '%'; $('bossLag').style.width = (k * 100).toFixed(2) + '%';
-      $('bossHpTxt').textContent = fmt(G.boss.hp);
+      sW('bossFill', (k * 100).toFixed(2) + '%'); sW('bossLag', (k * 100).toFixed(2) + '%');
+      sT('bossHpTxt', fmt(G.boss.hp));
     }
     $('combo').classList.toggle('on', G.combo >= 3);
     if (this.sheet) {
@@ -556,7 +562,7 @@ const UI = {
   toUi(x, y) { const z = camera.zoom, sx = (x - camera.position.x - VW / 2) * z + VW / 2, sy = (y - camera.position.y - VH / 2) * z + VH / 2; return [sx / 2, (VH - sy) / 2]; },
   number(x, y, txt, cls) {
     const fx = $('fx');
-    if (fx.childElementCount > 80) fx.firstElementChild.remove();
+    if (fx.childElementCount > (PERF.mobile ? 28 : 80)) fx.firstElementChild.remove();
     const [ux, uy] = this.toUi(x, y);
     const el = document.createElement('div'); el.className = 'dmg ' + cls;
     if ((cls === 'c' || cls === 'cb' || cls === 's') && /^\d+$/.test(txt)) { el.classList.add('tn'); el.innerHTML = talesNum(txt); } else el.textContent = txt;
