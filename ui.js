@@ -133,6 +133,7 @@ function sT(id, v) { sTe($(id), v); }
 function sH(id, v) { const e = $(id); if (e._h !== v) { e._h = v; e.innerHTML = v; } }
 function sW(id, v) { const e = $(id); if (e._w !== v) { e._w = v; e.style.width = v; } }
 function sHid(id, v) { const e = $(id); if (e.hidden !== !!v) e.hidden = !!v; }
+const COIN_POOL = [];
 const UI = {
   portraits: {}, icons: {}, figures: {}, dirty: { inv: true, char: true, belt: true, grid: true }, sheet: null, viewIdx: 0, sel: null, resetArm: 0,
   dirtyAll() { this.dirty.inv = this.dirty.char = this.dirty.belt = this.dirty.grid = true; this.dirty.waves = this.dirty.shop = true; },
@@ -601,11 +602,11 @@ const UI = {
     const fx = $('fx'); const [ux, uy] = this.toUi(x, y);
     const t = $('goldTxt').getBoundingClientRect(), u = uiEl.getBoundingClientRect(), s = 540 / u.width;
     const tx = (t.left - u.left) * s - 14, ty = (t.top - u.top) * s + 8;
-    const el = document.createElement('i'); el.className = 'coinfly'; el.style.left = ux + 'px'; el.style.top = uy + 'px';
-    fx.appendChild(el);
+    const el = COIN_POOL.pop() || document.createElement('i'); el.className = 'coinfly'; el.style.display = ''; el.style.left = ux + 'px'; el.style.top = uy + 'px';
+    if (el.parentNode !== fx) fx.appendChild(el);
     const a = el.animate([{ transform: 'translate(0,0) scale(1.3)' }, { transform: `translate(${(tx - ux) * .3}px,${(ty - uy) * .1 - 60}px) scale(1.1)`, offset: .35 }, { transform: `translate(${tx - ux}px,${ty - uy}px) scale(.7)` }],
       { duration: 520 + Math.random() * 200, easing: 'cubic-bezier(.5,0,.8,.6)' });
-    a.onfinish = () => { el.remove(); G.gold += value; SFX.coin(); QUESTS.event('gold', value); const g = $('goldWrap'); g.classList.remove('bump'); void g.offsetWidth; g.classList.add('bump'); };
+    a.onfinish = () => { el.style.display = 'none'; COIN_POOL.push(el); G.gold += value; SFX.coin(); QUESTS.event('gold', value); const g = $('goldWrap'); g.classList.remove('bump'); void g.offsetWidth; g.classList.add('bump'); };
   },
   hurtFlash() { const v = $('hurtVig'); v.classList.remove('on'); void v.offsetWidth; v.classList.add('on'); },
   skillBanner(h, i) {

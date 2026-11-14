@@ -134,6 +134,23 @@ function artFace(key, size, bg) {
   return makeCanvas(size, size, (c) => { if (bg) bg(c, size, size); const [x, y, s] = a.face; c.drawImage(a.img, x, y, s, s, 0, 0, size, size); });
 }
 
+/* ---------- object pool for sprite views: mobs come and go every wave, their mesh/material/uniforms are recycled ---------- */
+const VIEW_POOL = new Map();
+SpriteView.acquire = function (asset, scale) {
+  const p = VIEW_POOL.get(asset), v = p && p.pop();
+  if (!v) return new SpriteView(asset, scale);
+  v.sk.x = v.sk.y = 0; v.sk.scaleX = v.sk.scaleY = scale;
+  v.u.uFlash.value = 0; v.u.uAlpha.value = 1; v.u.uTint.value.setRGB(1, 1, 1); v.u.uFlashCol.value.setRGB(1, 1, 1);
+  v.listeners.length = 0; v.hitSlots = [{}]; v.slots = []; v.prevBox.clear(); v.t = 0; v.state.timeScale = 1;
+  v.mesh.visible = true; v.set('idle', true); v.place();
+  return v;
+};
+SpriteView.release = function (v) {
+  if (v.mesh.parent) v.mesh.parent.remove(v.mesh);
+  let p = VIEW_POOL.get(v.asset); if (!p) VIEW_POOL.set(v.asset, p = []);
+  if (p.length < 40) p.push(v); else { v.geo.dispose(); v.mesh.material.dispose(); if (typeof SB !== 'undefined') SB.untrackInst(v.mesh); }
+};
+
 /* ---------- GBA spell animations (Fire Emblem battle FX), additive, frame-stepped ---------- */
 const SFX_FS = `uniform sampler2D map; uniform float uAlpha; uniform vec3 uCol; varying vec2 vUv;
 void main(){ vec3 c = texture2D(map, vUv).rgb * uCol * uAlpha; gl_FragColor = vec4(c, 1.0); }`;
@@ -141,7 +158,7 @@ void main(){ vec3 c = texture2D(map, vUv).rgb * uCol * uAlpha; gl_FragColor = ve
 const SFX_VS2 = `uniform vec4 uRect; varying vec2 vUv; varying vec2 vL; void main(){ vL = uv; vUv = uRect.xy + uv * uRect.zw; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`;
 const SFX_FS2 = `uniform sampler2D map; uniform float uAlpha; uniform vec3 uCol; varying vec2 vUv; varying vec2 vL;
 void main(){ vec3 c = texture2D(map, vUv).rgb * uCol; float e = smoothstep(0.0, .14, vL.y) * smoothstep(1.0, .86, vL.y); gl_FragColor = vec4(c, uAlpha * e); }`;
-const FXT = {}, SHEET_FX = [];
+const FXT = {}, SHEET_FX = [], SFX_POOL = {};
 async function loadSheetFx() {
   await Promise.all(Object.entries(FX_DATA).map(([k, d]) => loadImage(d.png).then(img => {
     const t = new THREE.Texture(img); t.magFilter = THREE.NearestFilter; t.minFilter = THREE.NearestFilter; t.generateMipmaps = false; t.needsUpdate = true; FXT[k] = t;
@@ -150,12 +167,20 @@ async function loadSheetFx() {
 /* o: { scale, sx, sy, color, ro, loop, life, speed, screen, alpha, at: {frame: fn} } ; (x, y) = bottom-centre in world units */
 function sheetFx(name, x, y, o = {}) {
   const D = FX_DATA[name]; if (!D || !FXT[name]) return null;
-  const u = { map: { value: FXT[name] }, uRect: { value: new THREE.Vector4() }, uAlpha: { value: o.alpha ?? 1 }, uCol: { value: new THREE.Color(o.color ?? 0xffffff) } };
-  const m = new THREE.Mesh(fxGeo, D.opaque
-    ? new THREE.ShaderMaterial({ uniforms: u, vertexShader: SFX_VS2, fragmentShader: SFX_FS2, transparent: true, depthTest: false, depthWrite: false })
-    : new THREE.ShaderMaterial({ uniforms: u, vertexShader: SPR_VS, fragmentShader: SFX_FS, transparent: true, depthTest: false, depthWrite: false,
-      blending: THREE.CustomBlending, blendSrc: THREE.OneFactor, blendDst: THREE.OneFactor }));
-  m.renderOrder = o.ro ?? 63; m.frustumCulled = false; scene.add(m);
+  // pooled per sheet: reuse the mesh + material + uniforms of a finished effect instead of allocating new ones
+  const pool = SFX_POOL[name] || (SFX_POOL[name] = []);
+  let m, u;
+  if (pool.length) { ({ m, u } = pool.pop()); u.uAlpha.value = o.alpha ?? 1; u.uCol.value.set(o.color ?? 0xffffff); m.visible = true; }
+  else {
+    u = { map: { value: FXT[name] }, uRect: { value: new THREE.Vector4() }, uAlpha: { value: o.alpha ?? 1 }, uCol: { value: new THREE.Color(o.color ?? 0xffffff) } };
+    m = new THREE.Mesh(fxGeo, D.opaque
+      ? new THREE.ShaderMaterial({ uniforms: u, vertexShader: SFX_VS2, fragmentShader: SFX_FS2, transparent: true, depthTest: false, depthWrite: false })
+      : new THREE.ShaderMaterial({ uniforms: u, vertexShader: SPR_VS, fragmentShader: SFX_FS, transparent: true, depthTest: false, depthWrite: false,
+        blending: THREE.CustomBlending, blendSrc: THREE.OneFactor, blendDst: THREE.OneFactor }));
+    m.frustumCulled = false;
+    if (!D.opaque && typeof SB !== 'undefined') SB.trackInst(m, 'sfx');   // same sheet on screen N times → 1 instanced draw
+  }
+  m.renderOrder = o.ro ?? 63; scene.add(m);
   const f = Object.assign({ m, u, D, name, x, y, t: 0, fi: -1, scale: 4.5, speed: 1, fired: {} }, o);
   f.sx = o.sx ?? f.scale; f.sy = o.sy ?? f.scale;
   SHEET_FX.push(f); stepSheetFx(f, 0); return f;
@@ -165,7 +190,7 @@ function stepSheetFx(f, dt) {
   f.t += dt * f.speed;
   let i = Math.floor(f.t / D.dt);
   const life = f.life ?? (f.loop ? 1e9 : D.n * D.dt);
-  if (f.t >= life || f.dead) { scene.remove(f.m); f.m.material.dispose(); return false; }
+  if (f.t >= life || f.dead) { scene.remove(f.m); const pl = SFX_POOL[f.name]; if (pl.length < 24) pl.push({ m: f.m, u: f.u }); else { f.m.material.dispose(); if (typeof SB !== 'undefined') SB.untrackInst(f.m); } return false; }
   if (f.loop) i %= D.n; else i = Math.min(D.n - 1, i);
   if (f.at) for (const k in f.at) if (!f.fired[k] && i >= +k) { f.fired[k] = 1; f.at[k](f); }
   if (i !== f.fi) {

@@ -4,21 +4,27 @@
    Hector · "Armads Judgment" — Ostian thunder-axe: ember storm, eye cut-in, leap off-screen and a ground-shattering slam with fire pillars. */
 
 /* ---------- afterimages (copies of the current sprite frame that fade out) ---------- */
-const GHOSTS = [];
+const GHOSTS = [], GHOST_POOL = [];
 function ghost(h, color, life = .28, alpha = .55) {
   const v = h.view, src = v.mesh;
-  const u = {
-    map: { value: v.u.map.value }, uRect: { value: v.u.uRect.value.clone() }, uFlash: { value: .35 }, uAlpha: { value: alpha },
-    uTint: { value: new THREE.Color(color) }, uFlashCol: { value: new THREE.Color(color) },
-  };
-  const m = new THREE.Mesh(src.geometry, new THREE.ShaderMaterial({ uniforms: u, vertexShader: SPR_VS, fragmentShader: SPR_FS, transparent: true, depthTest: false, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending }));
-  m.position.copy(src.position); m.scale.copy(src.scale); m.renderOrder = 20; m.frustumCulled = false; scene.add(m);
-  GHOSTS.push({ m, u, t: 0, life, alpha });
+  let g = GHOST_POOL.pop();
+  if (!g) {
+    const u = { map: { value: null }, uRect: { value: new THREE.Vector4() }, uFlash: { value: .35 }, uAlpha: { value: 1 }, uTint: { value: new THREE.Color() }, uFlashCol: { value: new THREE.Color() } };
+    const m = new THREE.Mesh(src.geometry, new THREE.ShaderMaterial({ uniforms: u, vertexShader: SPR_VS, fragmentShader: SPR_FS, transparent: true, depthTest: false, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending }));
+    m.renderOrder = 20; m.frustumCulled = false;
+    if (typeof SB !== 'undefined') SB.trackInst(m, 'gst');
+    g = { m, u };
+  }
+  g.u.map.value = v.u.map.value; g.u.uRect.value.copy(v.u.uRect.value); g.u.uFlash.value = .35; g.u.uAlpha.value = alpha;
+  g.u.uTint.value.set(color); g.u.uFlashCol.value.set(color);
+  g.m.position.copy(src.position); g.m.scale.copy(src.scale); scene.add(g.m);
+  g.t = 0; g.life = life; g.alpha = alpha;
+  GHOSTS.push(g);
 }
 function updateGhosts(dt) {
   for (let i = GHOSTS.length - 1; i >= 0; i--) {
     const g = GHOSTS[i]; g.t += dt; g.u.uAlpha.value = g.alpha * Math.max(0, 1 - g.t / g.life);
-    if (g.t >= g.life) { scene.remove(g.m); g.m.material.dispose(); GHOSTS.splice(i, 1); }
+    if (g.t >= g.life) { scene.remove(g.m); GHOSTS.splice(i, 1); GHOST_POOL.push(g); }
   }
 }
 

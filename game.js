@@ -730,21 +730,28 @@ const BOSS_DEF = { key: 'batta', name: 'Batta the Beast', scale: 1, hw: 200, hh:
 const SPINE_MOBS = [];
 const BOSSES = { batta: BOSS_DEF, dracula: DRAC_DEF };
 
+/* ---------- tiny mesh pool (shadows, HP bars): park on release, reuse on the next spawn ---------- */
+const MESH_POOL = {};
+function poolMesh(kind, make) { const p = MESH_POOL[kind]; return (p && p.pop()) || make(); }
+function freeMesh(kind, m) { if (!m) return; if (m.parent) m.parent.remove(m); const p = MESH_POOL[kind] || (MESH_POOL[kind] = []); if (p.length < 60) p.push(m); }
 class SpineMob {
   constructor(key, x, elite, boss) {
     const D = boss ? BOSSES[key] : ENEMY_DEFS[key];
     this.D = D; this.key = key; this.boss = !!boss; this.elite = !!elite; this.asset = ASSETS['e_' + key];
     const sc = D.scale * (elite ? 1.15 : 1); this.sc = sc;
-    this.view = new SpriteView(this.asset, sc);
+    this.view = SpriteView.acquire(this.asset, sc);      // pooled per sheet
     this.view.sk.scaleX = -sc; // sheets face right: flip to face the heroes
     this.asset.reach = boss ? 380 : 340;
     this.view.mesh.renderOrder = boss ? 18 : 15; scene.add(this.view.mesh);
+    SB.trackInst(this.view.mesh, 'spr');                // every mob of this type → one instanced draw call
     this.baseTint = elite ? new THREE.Color(.8, .9, 1.45) : new THREE.Color(1, 1, 1);
     this.floorY = 0; this.plat = null; this.hopT = 0;
-    this.shadow = new THREE.Mesh(fxGeo, new THREE.MeshBasicMaterial({ map: TX.shadow, transparent: true, depthTest: false, depthWrite: false, opacity: .75 }));
+    this.shadow = poolMesh('shadow', () => new THREE.Mesh(fxGeo, new THREE.MeshBasicMaterial({ map: TX.shadow, transparent: true, depthTest: false, depthWrite: false, opacity: .75 })));
+    this.shadow.material.opacity = .75; this.shadow.visible = true;
     this.shadow.renderOrder = 9; scene.add(this.shadow); SB.track(this.shadow);
-    this.hpBg = new THREE.Mesh(fxGeo, new THREE.MeshBasicMaterial({ color: 0x0a0408, depthTest: false, depthWrite: false, transparent: true }));
-    this.hpFg = new THREE.Mesh(fxGeo, new THREE.MeshBasicMaterial({ color: elite ? 0x5c7cff : 0xd8213f, depthTest: false, depthWrite: false, transparent: true }));
+    this.hpBg = poolMesh('hpbg', () => new THREE.Mesh(fxGeo, new THREE.MeshBasicMaterial({ color: 0x0a0408, depthTest: false, depthWrite: false, transparent: true })));
+    this.hpFg = poolMesh('hpfg', () => new THREE.Mesh(fxGeo, new THREE.MeshBasicMaterial({ color: 0xd8213f, depthTest: false, depthWrite: false, transparent: true })));
+    this.hpFg.material.color.set(elite ? 0x5c7cff : 0xd8213f); this.hpBg.visible = this.hpFg.visible = false;
     this.hpBg.renderOrder = 40; this.hpFg.renderOrder = 41;
     if (!boss) { scene.add(this.hpBg); scene.add(this.hpFg); SB.track(this.hpBg); SB.track(this.hpFg); }
     const A = this.asset;
@@ -904,7 +911,7 @@ class SpineMob {
     this.nextAt = Math.max(this.meta.cancel, this.meta.boxEnd) + .2;
     if (this.nextAt > this.meta.dur) this.nextAt = this.meta.dur;
   }
-  dispose() { for (const m of [this.view.mesh, this.shadow, this.hpBg, this.hpFg]) scene.remove(m); this.view.geo.dispose(); }
+  dispose() { SpriteView.release(this.view); freeMesh('shadow', this.shadow); freeMesh('hpbg', this.hpBg); freeMesh('hpfg', this.hpFg); }
 }
 
 function makeBoss(x) { return new SpineMob('batta', x, false, true); }

@@ -13,7 +13,7 @@ const SB = (() => {
   const batches = new Map();    // key → batch
   const order = [];
   const tracked = new Set();
-  const nums = [];
+  const nums = [], numFree = [];
   // shelf packer
   let px = 2, py = 2, rowH = 0;
   function place(w, h) {
@@ -130,11 +130,14 @@ void main(){ vec4 t = texture2D(map, vUv); gl_FragColor = vec4(t.rgb * vC.rgb, t
   };
   function number(x, y, txt, cls) {
     if (!ready) return false;
-    if (nums.length > (PERF.mobile ? 60 : 140)) nums.shift();
-    nums.push({ x, y, txt: String(txt), cls, t0: performance.now() / 1000, big: cls === 'c' || cls === 'cb' ? 1.5 : cls === 's' ? 1.3 : 1.15,
-      rise: cls === 'lv' ? 90 : 70 + Math.random() * 30, dur: cls === 'lv' ? 1.4 : .9 });
+    if (nums.length > (PERF.mobile ? 60 : 140)) numFree.push(nums.shift());
+    const n = numFree.pop() || {};
+    n.x = x; n.y = y; n.txt = String(txt); n.cls = cls; n.t0 = performance.now() / 1000; n.big = cls === 'c' || cls === 'cb' ? 1.5 : cls === 's' ? 1.3 : 1.15;
+    n.rise = cls === 'lv' ? 90 : 70 + Math.random() * 30; n.dur = cls === 'lv' ? 1.4 : .9;
+    nums.push(n);
     return true;
   }
+  const _items = [];
   function drawNumber(nm, now, k) {
     let t = (now - nm.t0) / nm.dur; if (t >= 1) return false;
     const e = 1 - Math.pow(1 - t, 2.4);       // ≈ cubic-bezier(.2,.7,.3,1)
@@ -146,7 +149,7 @@ void main(){ vec4 t = texture2D(map, vUv); gl_FragColor = vec4(t.rgb * vC.rgb, t
     const useDig = st.dig && /^\d+$/.test(nm.txt);
     const b = batch(80, false);
     const H = st.h * k * sc;                  // on-screen height in world units
-    const items = [];
+    const items = _items; items.length = 0;
     let W = 0;
     for (const c of nm.txt) {
       if (useDig) { const g = digit[st.dig][+c]; if (!g) continue; const s = H / (g.h - (g.pad || 0) * 2); items.push([g, s]); W += (g.w - (g.pad || 0) * 2) * s; }
@@ -163,8 +166,63 @@ void main(){ vec4 t = texture2D(map, vUv); gl_FragColor = vec4(t.rgb * vC.rgb, t
     return true;
   }
 
+
+  /* ---------- GPU instancing: every sprite that shares a sheet (mobs of one type, hit-spark sheets…) → ONE draw call ---------- */
+  const IVS = `attribute vec4 iXf; attribute vec4 iRect; attribute vec4 iCol; attribute vec4 iFx;
+varying vec2 vUv; varying vec4 vC; varying vec4 vF;
+void main(){ vUv = iRect.xy + uv * iRect.zw; vC = iCol; vF = iFx;
+  gl_Position = projectionMatrix * modelViewMatrix * vec4(iXf.xy + position.xy * iXf.zw, 0.0, 1.0); }`;
+  const IFS_SPR = `uniform sampler2D map; varying vec2 vUv; varying vec4 vC; varying vec4 vF;
+void main(){ vec4 t = texture2D(map, vUv); if (t.a < .5) discard; vec3 c = mix(t.rgb * vC.rgb, vF.rgb, vF.a); gl_FragColor = vec4(c, vC.a); }`;
+  const IFS_SFX = `uniform sampler2D map; varying vec2 vUv; varying vec4 vC;
+void main(){ gl_FragColor = vec4(texture2D(map, vUv).rgb * vC.rgb * vC.a, 1.0); }`;
+  const ICAP = 256;
+  const ibatches = new Map(), iorder = [];
+  const itracked = new Map();     // mesh → kind ('spr' | 'sfx')
+  function ibatch(kind, map, ro) {
+    const key = kind + map.uuid + ro;
+    let b = ibatches.get(key); if (b) return b;
+    const geo = new THREE.InstancedBufferGeometry();
+    const base = new THREE.PlaneGeometry(1, 1);
+    geo.setIndex(base.index); geo.setAttribute('position', base.attributes.position); geo.setAttribute('uv', base.attributes.uv);
+    const mk = () => new THREE.InstancedBufferAttribute(new Float32Array(ICAP * 4), 4).setUsage(THREE.DynamicDrawUsage);
+    const A = { iXf: mk(), iRect: mk(), iCol: mk(), iFx: mk() };
+    for (const k in A) geo.setAttribute(k, A[k]);
+    geo.instanceCount = 0;
+    const mat = kind === 'spr' || kind === 'gst'
+      ? new THREE.ShaderMaterial({ uniforms: { map: { value: map } }, vertexShader: IVS, fragmentShader: IFS_SPR, transparent: true, depthTest: false, depthWrite: false, side: THREE.DoubleSide,
+          blending: kind === 'gst' ? THREE.AdditiveBlending : THREE.NormalBlending })
+      : new THREE.ShaderMaterial({ uniforms: { map: { value: map } }, vertexShader: IVS, fragmentShader: IFS_SFX, transparent: true, depthTest: false, depthWrite: false, side: THREE.DoubleSide,
+          blending: THREE.CustomBlending, blendSrc: THREE.OneFactor, blendDst: THREE.OneFactor });
+    const mesh = new THREE.Mesh(geo, mat); mesh.renderOrder = ro; mesh.frustumCulled = false; mesh.visible = false; scene.add(mesh);
+    b = { mesh, geo, A, n: 0 }; ibatches.set(key, b); iorder.push(b); return b;
+  }
+  function trackInst(m, kind) { if (!m) return; m.layers.set(1); itracked.set(m, kind); }
+  function untrackInst(m) { if (!m) return; itracked.delete(m); m.layers.set(0); }
+  function flushInst() {
+    for (const b of iorder) b.n = 0;
+    for (const [m, kind] of itracked) {
+      if (!m.parent) continue;                  // pooled & parked: keep the entry, skip drawing
+      if (!shown(m)) continue;
+      const u = m.material.uniforms; const map = u.map.value; if (!map) continue;
+      const alpha = u.uAlpha.value; if (alpha <= .004) continue;
+      const b = ibatch(kind, map, m.renderOrder); if (b.n >= ICAP) continue;
+      const i = b.n++ * 4, A = b.A, r = u.uRect.value;
+      A.iXf.array[i] = m.position.x; A.iXf.array[i + 1] = m.position.y; A.iXf.array[i + 2] = m.scale.x; A.iXf.array[i + 3] = m.scale.y;
+      A.iRect.array[i] = r.x; A.iRect.array[i + 1] = r.y; A.iRect.array[i + 2] = r.z; A.iRect.array[i + 3] = r.w;
+      const isSpr = kind !== 'sfx', c = isSpr ? u.uTint.value : u.uCol.value;
+      A.iCol.array[i] = c.r; A.iCol.array[i + 1] = c.g; A.iCol.array[i + 2] = c.b; A.iCol.array[i + 3] = alpha;
+      if (isSpr) { const fc = u.uFlashCol.value; A.iFx.array[i] = fc.r; A.iFx.array[i + 1] = fc.g; A.iFx.array[i + 2] = fc.b; A.iFx.array[i + 3] = u.uFlash.value; }
+    }
+    for (const b of iorder) {
+      b.mesh.visible = b.n > 0; b.geo.instanceCount = b.n;
+      if (!b.n) continue;
+      for (const k in b.A) { const a = b.A[k]; a.updateRange.offset = 0; a.updateRange.count = b.n * 4; a.needsUpdate = true; }
+    }
+  }
   /* ---------- per frame: rebuild every batch from current state, upload, draw ---------- */
   function flush() {
+    flushInst();
     if (!ready) return;
     for (const b of order) b.n = 0;
     // particles
@@ -181,7 +239,7 @@ void main(){ vec4 t = texture2D(map, vUv); gl_FragColor = vec4(t.rgb * vC.rgb, t
     }
     // damage numbers
     const now = performance.now() / 1000, k = 2 / (camera.zoom || 1);
-    for (let i = nums.length - 1; i >= 0; i--) if (!drawNumber(nums[i], now, k)) nums.splice(i, 1);
+    for (let i = nums.length - 1; i >= 0; i--) if (!drawNumber(nums[i], now, k)) numFree.push(nums.splice(i, 1)[0]);
     for (const b of order) {
       b.mesh.visible = b.n > 0;
       if (!b.n) continue;
@@ -191,5 +249,5 @@ void main(){ vec4 t = texture2D(map, vUv); gl_FragColor = vec4(t.rgb * vC.rgb, t
       b.ca.updateRange.count = b.n * 16; b.ca.needsUpdate = true;
     }
   }
-  return { init, has, track, number, flush, get ready() { return ready; }, get drawCalls() { return order.filter(b => b.n).length; } };
+  return { init, has, track, trackInst, untrackInst, number, flush, get instCalls() { return iorder.filter(b => b.n).length; }, get ready() { return ready; }, get drawCalls() { return order.filter(b => b.n).length; } };
 })();

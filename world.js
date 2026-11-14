@@ -36,18 +36,27 @@ function drawPlat(w, style) {
     }
   });
 }
+const PLAT_TEX = new Map(), PLAT_POOL = [];
+const PLAT_GEO = new THREE.PlaneGeometry(1, 1); PLAT_GEO.translate(.5, -.5, 0);
 class Plat {
   constructor(x0, x1, y, style) {
     this.x0 = x0; this.x1 = x1; this.y = y; this.style = style;
-    const pw = Math.max(16, Math.round((x1 - x0) / PX));
-    const tex = texFrom(drawPlat(pw, style)); tex.magFilter = THREE.NearestFilter; tex.minFilter = THREE.NearestFilter; tex.generateMipmaps = false;
-    const geo = new THREE.PlaneGeometry(1, 1); geo.translate(.5, -.5, 0);
-    this.mesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthTest: false, depthWrite: false }));
+    const pw = Math.max(16, Math.round((x1 - x0) / PX / 8) * 8);     // widths snap to 8 px → textures are reused, not re-uploaded
+    const key = pw + '|' + style;
+    let tex = PLAT_TEX.get(key);
+    if (!tex) {
+      tex = texFrom(drawPlat(pw, style)); tex.magFilter = THREE.NearestFilter; tex.minFilter = THREE.NearestFilter; tex.generateMipmaps = false;
+      PLAT_TEX.set(key, tex);
+      if (PLAT_TEX.size > 24) { const [k0, t0] = PLAT_TEX.entries().next().value; if (!PLATS.some(p => p.mesh.material.map === t0)) { t0.dispose(); PLAT_TEX.delete(k0); } }
+    }
+    this.mesh = PLAT_POOL.pop() || new THREE.Mesh(PLAT_GEO, new THREE.MeshBasicMaterial({ transparent: true, depthTest: false, depthWrite: false }));
+    if (!this.mesh.material.map) this.mesh.material.needsUpdate = true;
+    this.mesh.material.map = tex;
     this.mesh.renderOrder = 12; this.mesh.frustumCulled = false;
     this.mesh.position.set(x0, GROUND + y + 3 * PX, 0); this.mesh.scale.set(x1 - x0, PLAT_H * PX, 1);
     scene.add(this.mesh);
   }
-  dispose() { scene.remove(this.mesh); this.mesh.material.map.dispose(); this.mesh.material.dispose(); this.mesh.geometry.dispose(); }
+  dispose() { scene.remove(this.mesh); PLAT_POOL.push(this.mesh); }
 }
 function addPlat(x0, x1, y) { const p = new Plat(x0, x1, y, G.secret ? 'void' : 'grass'); PLATS.push(p); return p; }
 function clearPlats(all) { for (let i = PLATS.length - 1; i >= 0; i--) { const p = PLATS[i]; if (all || p.x1 < G.camX - 600) { p.dispose(); PLATS.splice(i, 1); } } }

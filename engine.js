@@ -278,9 +278,13 @@ function buildFxTextures() {
 const FX = [];
 const fxGeo = new THREE.PlaneGeometry(1, 1);
 const _fxWhite = new THREE.Color(1, 1, 1), _fxCol = new THREE.Color();
+/* particle records are recycled: a finished spark goes back to FX_FREE and is reused by the next spawn (no garbage per hit) */
+const FX_FREE = [];
+const FX_DEF = { m: null, batched: true, t: 0, life: .3, x: 0, y: 0, vx: 0, vy: 0, g: 0, rot: 0, vr: 0, sx: 100, sy: 100, sx1: null, sy1: null, a0: 1, a1: 0, drag: 0, ground: false, ease: 1,
+  onEnd: null, onUpdate: null, fadeLate: false, spin: 0, alignVel: false, normal: false, dead: false, color: undefined, ro: undefined, tex: null };
 function spawnFx(o) {
   if (typeof SB !== 'undefined' && SB.has(o.tex)) {      // batched: no mesh, no material — written into the shared quad buffer
-    const f = Object.assign({ m: null, batched: true, t: 0, life: .3, x: 0, y: 0, vx: 0, vy: 0, g: 0, rot: 0, vr: 0, sx: 100, sy: 100, sx1: null, sy1: null, a0: 1, a1: 0, drag: 0, ground: false, ease: 1 }, o);
+    const f = Object.assign(FX_FREE.pop() || {}, FX_DEF, o);
     if (f.sx1 === null) f.sx1 = f.sx; if (f.sy1 === null) f.sy1 = f.sy;
     const c = o.color === undefined ? _fxWhite : o.color.isColor ? o.color : _fxCol.set(o.color);
     f._cr = c.r; f._cg = c.g; f._cb = c.b; f._sx = f.sx; f._sy = f.sy; f._rot = f.rot; f._a = f.a0;
@@ -310,7 +314,7 @@ function updateFx(dt) {
     const op = f.a0 + (f.a1 - f.a0) * (f.fadeLate ? Math.max(0, (k - .6) / .4) : k);
     if (f.batched) { f._sx = sx; f._sy = sy; f._rot = rot; f._a = op; }
     else { f.m.position.set(f.x, f.y, 0); f.m.rotation.z = rot; f.m.scale.set(sx, sy, 1); f.m.material.opacity = op; }
-    if (f.t >= f.life || f.dead) { if (f.m) { scene.remove(f.m); f.m.material.dispose(); } FX.splice(i, 1); if (f.onEnd) f.onEnd(f); }
+    if (f.t >= f.life || f.dead) { if (f.m) { scene.remove(f.m); f.m.material.dispose(); } FX.splice(i, 1); if (f.onEnd) f.onEnd(f); if (f.batched && FX_FREE.length < 600) { f.onEnd = f.onUpdate = null; FX_FREE.push(f); } }
   }
 }
 
