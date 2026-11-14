@@ -561,6 +561,7 @@ const UI = {
   /* ---------- combat text & feedback ---------- */
   toUi(x, y) { const z = camera.zoom, sx = (x - camera.position.x - VW / 2) * z + VW / 2, sy = (y - camera.position.y - VH / 2) * z + VH / 2; return [sx / 2, (VH - sy) / 2]; },
   number(x, y, txt, cls) {
+    if (SB.number(x, y, txt, cls)) return;      // batched WebGL text: one draw call for every number on screen
     const fx = $('fx');
     if (fx.childElementCount > (PERF.mobile ? 28 : 80)) fx.firstElementChild.remove();
     const [ux, uy] = this.toUi(x, y);

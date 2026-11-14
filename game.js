@@ -173,7 +173,7 @@ class Hero {
   beltRows() { const b = this.equip.belt; return b && this.S.active.has('belt') ? BASE[b.base].rows : 1; }
   xpFrac() { if (this.level >= 99) return 1; const a = XP_TABLE[this.level], b = XP_TABLE[this.level + 1]; return Math.max(0, Math.min(1, (this.xp - a) / (b - a))); }
   enter(x, tag) {
-    scene.add(this.view.mesh); scene.add(this.shadow);
+    scene.add(this.view.mesh); scene.add(this.shadow); SB.track(this.shadow);
     this.x = x; this.vx = 0; this.freeze = 0; this.hitSets.clear();
     const prev = G.hero && G.hero !== this ? G.hero : null; this.face = prev ? prev.face : 1; this.y = prev ? prev.y : 0; this.air = prev ? prev.air : false; this.vy = prev ? prev.vy : 0; this.jvx = prev ? prev.jvx : 0;
     if (tag) {
@@ -631,6 +631,7 @@ class Mob {
     this.hpBg = new THREE.Mesh(fxGeo, new THREE.MeshBasicMaterial({ color: 0x0a0408, depthTest: false, depthWrite: false, transparent: true }));
     this.hpFg = new THREE.Mesh(fxGeo, new THREE.MeshBasicMaterial({ color: elite ? 0x5c7cff : 0xd8213f, depthTest: false, depthWrite: false, transparent: true }));
     this.hpBg.renderOrder = 40; this.hpFg.renderOrder = 41; scene.add(this.hpBg); scene.add(this.hpFg);
+    SB.track(this.shadow); SB.track(this.hpBg); SB.track(this.hpFg);
     this.x = x; this.y = T.fly ? rnd(160, 240) : 0; this.baseY = this.y; this.vx = 0; this.vy = 0;
     const st = monStats(mlvlNow() + (elite ? 2 : 0), Object.assign({}, MOB_TYPES_STAT[type], elite ? { life: MOB_TYPES_STAT[type].life * 3, dmg: MOB_TYPES_STAT[type].dmg * 1.5, xp: 3 } : {}));
     Object.assign(this, st);
@@ -741,11 +742,11 @@ class SpineMob {
     this.baseTint = elite ? new THREE.Color(.8, .9, 1.45) : new THREE.Color(1, 1, 1);
     this.floorY = 0; this.plat = null; this.hopT = 0;
     this.shadow = new THREE.Mesh(fxGeo, new THREE.MeshBasicMaterial({ map: TX.shadow, transparent: true, depthTest: false, depthWrite: false, opacity: .75 }));
-    this.shadow.renderOrder = 9; scene.add(this.shadow);
+    this.shadow.renderOrder = 9; scene.add(this.shadow); SB.track(this.shadow);
     this.hpBg = new THREE.Mesh(fxGeo, new THREE.MeshBasicMaterial({ color: 0x0a0408, depthTest: false, depthWrite: false, transparent: true }));
     this.hpFg = new THREE.Mesh(fxGeo, new THREE.MeshBasicMaterial({ color: elite ? 0x5c7cff : 0xd8213f, depthTest: false, depthWrite: false, transparent: true }));
     this.hpBg.renderOrder = 40; this.hpFg.renderOrder = 41;
-    if (!boss) { scene.add(this.hpBg); scene.add(this.hpFg); }
+    if (!boss) { scene.add(this.hpBg); scene.add(this.hpFg); SB.track(this.hpBg); SB.track(this.hpFg); }
     const A = this.asset;
     this.an = {
       move: findAnim(A, 'move', 'walk', 'run', /move/, /walk/, 'idle'), idle: findAnim(A, 'idle', /idle/),
@@ -1209,6 +1210,7 @@ function frameBody(now) {
   CUT.update(real);
   UI.tick();
   cullFaded();
+  SB.flush();
   renderer.render(scene, camera);
   CUT.render();
   save();
@@ -1227,6 +1229,7 @@ async function boot() {
   await loadSprite('e_batta');
   await loadSprite('e_dracula').catch(() => null);
   await loadSheetFx();
+  try { await SB.init(); } catch (e) { console.warn('batcher off', e); }
   buildMobTextures();
   await ITEM_ART.load();
   await loadHeroArt();

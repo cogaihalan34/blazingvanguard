@@ -277,7 +277,15 @@ function buildFxTextures() {
 /* simple pooled additive / normal sprites */
 const FX = [];
 const fxGeo = new THREE.PlaneGeometry(1, 1);
+const _fxWhite = new THREE.Color(1, 1, 1), _fxCol = new THREE.Color();
 function spawnFx(o) {
+  if (typeof SB !== 'undefined' && SB.has(o.tex)) {      // batched: no mesh, no material — written into the shared quad buffer
+    const f = Object.assign({ m: null, batched: true, t: 0, life: .3, x: 0, y: 0, vx: 0, vy: 0, g: 0, rot: 0, vr: 0, sx: 100, sy: 100, sx1: null, sy1: null, a0: 1, a1: 0, drag: 0, ground: false, ease: 1 }, o);
+    if (f.sx1 === null) f.sx1 = f.sx; if (f.sy1 === null) f.sy1 = f.sy;
+    const c = o.color === undefined ? _fxWhite : o.color.isColor ? o.color : _fxCol.set(o.color);
+    f._cr = c.r; f._cg = c.g; f._cb = c.b; f._sx = f.sx; f._sy = f.sy; f._rot = f.rot; f._a = f.a0;
+    FX.push(f); return f;
+  }
   const mat = new THREE.MeshBasicMaterial({ map: o.tex, transparent: true, depthTest: false, depthWrite: false, color: o.color || 0xffffff,
     blending: o.normal ? THREE.NormalBlending : THREE.AdditiveBlending, opacity: o.a0 ?? 1 });
   const m = new THREE.Mesh(fxGeo, mat);
@@ -296,14 +304,13 @@ function updateFx(dt) {
     f.x += f.vx * dt; f.y += f.vy * dt; f.rot += f.vr * dt;
     if (f.ground && f.y < GROUND) { f.y = GROUND; f.vy = Math.abs(f.vy) * .45; f.vx *= .6; if (Math.abs(f.vy) < 60) f.vy = 0; }
     if (f.onUpdate) f.onUpdate(f, dt);
-    f.m.position.set(f.x, f.y, 0);
-    f.m.rotation.z = f.rot;
     let sx = f.sx + (f.sx1 - f.sx) * e, sy = f.sy + (f.sy1 - f.sy) * e;
-    if (f.alignVel) f.m.rotation.z = Math.atan2(f.vy, f.vx);
     if (f.spin) sx *= Math.abs(Math.cos(f.t * f.spin));
-    f.m.scale.set(sx, sy, 1);
-    f.m.material.opacity = f.a0 + (f.a1 - f.a0) * (f.fadeLate ? Math.max(0, (k - .6) / .4) : k);
-    if (f.t >= f.life || f.dead) { scene.remove(f.m); f.m.material.dispose(); FX.splice(i, 1); if (f.onEnd) f.onEnd(f); }
+    const rot = f.alignVel ? Math.atan2(f.vy, f.vx) : f.rot;
+    const op = f.a0 + (f.a1 - f.a0) * (f.fadeLate ? Math.max(0, (k - .6) / .4) : k);
+    if (f.batched) { f._sx = sx; f._sy = sy; f._rot = rot; f._a = op; }
+    else { f.m.position.set(f.x, f.y, 0); f.m.rotation.z = rot; f.m.scale.set(sx, sy, 1); f.m.material.opacity = op; }
+    if (f.t >= f.life || f.dead) { if (f.m) { scene.remove(f.m); f.m.material.dispose(); } FX.splice(i, 1); if (f.onEnd) f.onEnd(f); }
   }
 }
 
@@ -520,11 +527,23 @@ class Layer {
     this.tex = texFrom(canvasEl); this.tex.generateMipmaps = true; this.tex.minFilter = THREE.LinearMipmapLinearFilter; this.w = worldW; this.p = p;
     this.group = new THREE.Group(); this.copies = [];
     const n = Math.ceil(VW * 1.5 / worldW) + 3;
-    const geo = new THREE.PlaneGeometry(worldW, worldH); geo.translate(worldW / 2, worldH / 2, 0);
     this.mat = new THREE.MeshBasicMaterial({ map: this.tex, transparent: true, depthTest: false, depthWrite: false, opacity: opts.opacity ?? 1,
       blending: opts.additive ? THREE.AdditiveBlending : THREE.NormalBlending });
-    for (let k = 0; k < n; k++) {
-      const m = new THREE.Mesh(geo, this.mat); m.position.set(k * worldW, yBottom, 0); m.renderOrder = ro; m.frustumCulled = false;
+    if (opts.copies) {          // legacy path: separate meshes (needed when children are attached per tile)
+      const geo = new THREE.PlaneGeometry(worldW, worldH); geo.translate(worldW / 2, worldH / 2, 0);
+      for (let k = 0; k < n; k++) {
+        const m = new THREE.Mesh(geo, this.mat); m.position.set(k * worldW, yBottom, 0); m.renderOrder = ro; m.frustumCulled = false;
+        this.group.add(m); this.copies.push(m);
+      }
+    } else {                    // batched: all repeating tiles in ONE geometry → one draw call per layer
+      const pos = new Float32Array(n * 12), uv = new Float32Array(n * 8), idx = new Uint16Array(n * 6);
+      for (let k = 0; k < n; k++) {
+        const x0 = k * worldW, x1 = x0 + worldW, p = k * 12, u = k * 8, v = k * 4, o = k * 6;
+        pos.set([x0, 0, 0, x1, 0, 0, x1, worldH, 0, x0, worldH, 0], p); uv.set([0, 0, 1, 0, 1, 1, 0, 1], u);
+        idx.set([v, v + 1, v + 2, v, v + 2, v + 3], o);
+      }
+      const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(pos, 3)); geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2)); geo.setIndex(new THREE.BufferAttribute(idx, 1));
+      const m = new THREE.Mesh(geo, this.mat); m.position.set(0, yBottom, 0); m.renderOrder = ro; m.frustumCulled = false;
       this.group.add(m); this.copies.push(m);
     }
     this.drift = opts.drift || 0; this.t = 0;
@@ -548,7 +567,7 @@ const BG = {
     this.castle = new Layer(makeCanvas(2048, 800, drawCastle), 2400, 940, GROUND + 260, .12, 2);
     this.nave = new Layer(makeCanvas(2048, 1100, drawNave), 2600, 1400, GROUND - 40, .4, 3);
     const pill = makeCanvas(2400, 1300, drawPillars);
-    this.pillars = new Layer(pill, 2400, 1300, GROUND - 20, .75, 4);
+    this.pillars = new Layer(pill, 2400, 1300, GROUND - 20, .75, 4, { copies: true });
     // flames on pillars as additive sprites (children of each copy)
     this.flames = [];
     const fmat = new THREE.MeshBasicMaterial({ map: TX.glow, transparent: true, blending: THREE.AdditiveBlending, depthTest: false, depthWrite: false, color: 0xff9a40 });
@@ -572,6 +591,7 @@ const BG = {
     for (let i = 0; i < 40; i++) {
       const m = new THREE.Mesh(fxGeo, new THREE.MeshBasicMaterial({ map: TX.glow, transparent: true, blending: THREE.AdditiveBlending, depthTest: false, depthWrite: false, color: Math.random() < .7 ? 0xff7a30 : 0xd060ff }));
       m.renderOrder = 71; scene.add(m);
+      if (typeof SB !== 'undefined') SB.track(m);
       this.embers.push({ m, x: rnd(0, VW), y: rnd(GROUND - 80, VH), vx: rnd(-20, 20), vy: rnd(20, 70), s: rnd(6, 16), ph: rnd(0, 6) });
     }
     this.resize();

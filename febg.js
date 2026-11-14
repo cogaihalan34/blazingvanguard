@@ -254,6 +254,7 @@ BG.buildArt = function (I) {
   for (let i = 0; i < 18; i++) {
     const m = new THREE.Mesh(fxGeo, new THREE.MeshBasicMaterial({ map: TX.glow, transparent: true, blending: THREE.AdditiveBlending, depthTest: false, depthWrite: false, color: 0xfff0a0 }));
     m.renderOrder = 71; scene0.add(m);
+    if (typeof SB !== 'undefined') SB.track(m);
     this.embers.push({ m, x: rnd(0, VW), y: rnd(GROUND - 80, VH), vx: rnd(-20, 20), vy: rnd(10, 40), s: rnd(5, 10), ph: rnd(0, 6) });
   }
   this.world = 'normal';

@@ -961,6 +961,15 @@ button:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
 .togs{gap:3px;width:56px}
 .togs .tog{font-size:10px!important;padding:0}
 #sndBtn{white-space:nowrap}
+/* ---------- performance: screen-space blur/glow filters and blend modes over the live canvas are switched off ---------- */
+#cine .cn-lines,#title .tt-rays,#title .tt-embers,#title .tt-shine{mix-blend-mode:normal!important}
+#title .tt-rays{opacity:.55}#title .tt-shine{opacity:.5}
+#cine .cn-art{filter:none!important}
+#lvup .lv-word img{filter:drop-shadow(0 4px 0 #1a1020)!important}
+#lvup .lv-word b{filter:var(--pxo)!important}
+#lvup .lv-num span:last-child img{filter:sepia(1) saturate(4) brightness(1.15) drop-shadow(0 3px 0 #000)!important}
+#rift.on{animation-name:riftfx2!important}
+@keyframes riftfx2{0%{opacity:0;transform:scale(1.4) skewX(0)}20%{opacity:1;transform:scale(1) skewX(-6deg)}35%{transform:skewX(8deg)}50%{opacity:1;transform:none}100%{opacity:0;transform:none}}
 </style>
 
 <div id="stage">
@@ -1055,19 +1064,20 @@ var iw=innerWidth,ih=innerHeight,w=iw,h=ih;if(w/h>9/16)w=Math.round(h*9/16);if(h
 st.style.width=w+'px';st.style.height=h+'px';st.style.top=Math.round((ih-h)/2)+'px';ui.style.height=(540*h/w)+'px';ui.style.transform='scale('+(w/540)+')';})();
 </script>
 <script src="vendor/three.min.js"></script>
-<script src="spine-core.js?v=1794627890"></script>
-<script src="engine.js?v=1794627890"></script>
-<script src="d2.js?v=1794627890"></script>
-<script src="skillicons.js?v=1794627890"></script>
-<script src="ui.js?v=1794627890"></script>
-<script src="spritedata.js?v=1794627890"></script>
-<script src="sprite.js?v=1794627890"></script>
-<script src="fxdata.js?v=1794627890"></script>
-<script src="febg.js?v=1794627890"></script>
-<script src="audio.js?v=1794627890"></script>
-<script src="world.js?v=1794627890"></script>
-<script src="story.js?v=1794627890"></script>
-<script src="cine.js?v=1794627890"></script>
-<script src="game.js?v=1794627890"></script>
+<script src="spine-core.js?v=1794629464"></script>
+<script src="engine.js?v=1794629464"></script>
+<script src="d2.js?v=1794629464"></script>
+<script src="skillicons.js?v=1794629464"></script>
+<script src="ui.js?v=1794629464"></script>
+<script src="spritedata.js?v=1794629464"></script>
+<script src="sprite.js?v=1794629464"></script>
+<script src="fxdata.js?v=1794629464"></script>
+<script src="febg.js?v=1794629464"></script>
+<script src="audio.js?v=1794629464"></script>
+<script src="world.js?v=1794629464"></script>
+<script src="story.js?v=1794629464"></script>
+<script src="batch.js?v=1794629464"></script>
+<script src="cine.js?v=1794629464"></script>
+<script src="game.js?v=1794629464"></script>
 
 </body></html>
